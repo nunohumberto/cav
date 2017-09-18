@@ -3,8 +3,12 @@
 #include <map>
 using namespace std;
 
-int main() {
-   string dataset = "aaab1c94v2416b4v4abc";
+int main(int argc, char* argv[]) {
+   if (argc != 2) {
+     cout << "No data input.\n";
+     return 1;
+   }
+   string dataset(argv[1]);
    map<char, int> setmap;
    for(int i = 0; i < dataset.size(); i++) {
    	setmap[dataset[i]]++;
