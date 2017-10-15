@@ -32,10 +32,10 @@ int main(int argc, char* argv[]) {
     }
 
 
-
+    /*
     double state_sum;
     double entropy, state_entropy, prob;
-    int total = dataset.size() - CONTEXT_SIZE;/*
+    int total = dataset.size() - CONTEXT_SIZE;
     for(map<string, map<char,int> >::iterator it = setmap.begin(); it != setmap.end(); ++it) {
         state_sum = 0;
         state_entropy = 0;
@@ -81,21 +81,26 @@ int main(int argc, char* argv[]) {
         map <char, double> textPercent; //percentage of char in generated text
         bool wfound = false; //context found
 
+
+        string w = result.substr(result.length()-ORDER,result.length()); //context
+        cout << "Context " << w << endl;
+
+
         for(int i = 0; i < dataset.size()-ORDER; i++) {
             if(textPercent.count(dataset[i]) == 0){
                 size_t n = std::count(result.begin(), result.end(), dataset[i]);
-                textPercent[dataset[i]] = n/result.size();
+                textPercent[dataset[i]] = ((double) n)/result.size();
+                cout << "\t" << dataset[i] << " -> " << textPercent[dataset[i]] << endl;
             }
         }
 
-        string w = result.substr(result.length()-ORDER,result.length()); //context
 
-        cout << "Context " << w << endl;
+
+
 
         int maxbnum = 0;
 
-        for (map<char, int>::iterator inner = setmap[w].begin();
-             inner != setmap[w].end(); ++inner) {
+        for (map<char, int>::iterator inner = setmap[w].begin(); inner != setmap[w].end(); ++inner) {
             int bnum = setmap[w][inner->first];
             if (bnum > maxbnum && bnum/dataset.size() >= textPercent[inner->first]) {
                 maxbnum = bnum;
