@@ -1,6 +1,6 @@
-/root/clion/clion-2017.2.2/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /root/cav
--- The C compiler identification is GNU 5.3.1
--- The CXX compiler identification is GNU 5.3.1
+/home/mikael/Downloads/clion-2017.2.2/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/mikael/Documents/CAV/cav
+-- The C compiler identification is GNU 5.4.0
+-- The CXX compiler identification is GNU 5.4.0
 -- Check for working C compiler: /usr/bin/cc
 -- Check for working C compiler: /usr/bin/cc -- works
 -- Detecting C compiler ABI info
@@ -15,4 +15,4 @@
 -- Detecting CXX compile features - done
 -- Configuring done
 -- Generating done
--- Build files have been written to: /root/cav/cmake-build-debug
+-- Build files have been written to: /home/mikael/Documents/CAV/cav/cmake-build-debug

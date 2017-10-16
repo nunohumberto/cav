@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/root/cav/lab1/ex1.cpp
+/home/mikael/Documents/CAV/cav/lab1/ex1.cpp
 iostream
 -
 string
