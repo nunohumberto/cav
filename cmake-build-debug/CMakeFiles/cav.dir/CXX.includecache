@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/root/cav/ex1.cpp
+iostream
+-
+string
+-
+math.h
+-
+map
+-
+algorithm
+-
+fstream
+-
+sstream
+-
+
