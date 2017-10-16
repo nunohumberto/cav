@@ -199,7 +199,7 @@ string FCM::generateText(int length) {
 
         //cout << "Result: '" << result << '\'' << endl;
     }
-    return result;
+    return result + "\n";
 
 
 }
@@ -245,7 +245,7 @@ int main(int argc, char* argv[]) {
     fcm.printStatistics(context_test_value);
 
     int alpha;
-    cout << "Inout an alpha to calculate printEntropy: ";
+    cout << "Input an alpha to calculate entropy: ";
     cin >> alpha;
     fcm.printEntropy(alpha);
 
