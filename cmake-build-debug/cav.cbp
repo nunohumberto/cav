@@ -84,7 +84,7 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/root/cav/cav/lab1/ex1.cpp">
+		<Unit filename="/root/cav/ex1.cpp">
 			<Option target="cav"/>
 		</Unit>
 		<Unit filename="/root/cav/CMakeLists.txt">

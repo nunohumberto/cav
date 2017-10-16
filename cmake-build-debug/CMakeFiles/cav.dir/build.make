@@ -57,38 +57,38 @@ include CMakeFiles/cav.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/cav.dir/flags.make
 
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o: CMakeFiles/cav.dir/flags.make
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o: ../cav/lab1/ex1.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/cav/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o -c /root/cav/cav/lab1/ex1.cpp
+CMakeFiles/cav.dir/ex1.cpp.o: CMakeFiles/cav.dir/flags.make
+CMakeFiles/cav.dir/ex1.cpp.o: ../ex1.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/cav/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/cav.dir/ex1.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/cav.dir/ex1.cpp.o -c /root/cav/ex1.cpp
 
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/cav.dir/cav/lab1/ex1.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /root/cav/cav/lab1/ex1.cpp > CMakeFiles/cav.dir/cav/lab1/ex1.cpp.i
+CMakeFiles/cav.dir/ex1.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/cav.dir/ex1.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /root/cav/ex1.cpp > CMakeFiles/cav.dir/ex1.cpp.i
 
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/cav.dir/cav/lab1/ex1.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /root/cav/cav/lab1/ex1.cpp -o CMakeFiles/cav.dir/cav/lab1/ex1.cpp.s
+CMakeFiles/cav.dir/ex1.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/cav.dir/ex1.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /root/cav/ex1.cpp -o CMakeFiles/cav.dir/ex1.cpp.s
 
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.requires:
+CMakeFiles/cav.dir/ex1.cpp.o.requires:
 
-.PHONY : CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.requires
+.PHONY : CMakeFiles/cav.dir/ex1.cpp.o.requires
 
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.provides: CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.requires
-	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.provides.build
-.PHONY : CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.provides
+CMakeFiles/cav.dir/ex1.cpp.o.provides: CMakeFiles/cav.dir/ex1.cpp.o.requires
+	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/ex1.cpp.o.provides.build
+.PHONY : CMakeFiles/cav.dir/ex1.cpp.o.provides
 
-CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.provides.build: CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o
+CMakeFiles/cav.dir/ex1.cpp.o.provides.build: CMakeFiles/cav.dir/ex1.cpp.o
 
 
 # Object files for target cav
 cav_OBJECTS = \
-"CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o"
+"CMakeFiles/cav.dir/ex1.cpp.o"
 
 # External object files for target cav
 cav_EXTERNAL_OBJECTS =
 
-cav: CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o
+cav: CMakeFiles/cav.dir/ex1.cpp.o
 cav: CMakeFiles/cav.dir/build.make
 cav: CMakeFiles/cav.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/cav/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable cav"
@@ -99,7 +99,7 @@ CMakeFiles/cav.dir/build: cav
 
 .PHONY : CMakeFiles/cav.dir/build
 
-CMakeFiles/cav.dir/requires: CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o.requires
+CMakeFiles/cav.dir/requires: CMakeFiles/cav.dir/ex1.cpp.o.requires
 
 .PHONY : CMakeFiles/cav.dir/requires
 
