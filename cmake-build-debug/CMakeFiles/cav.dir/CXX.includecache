@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/root/cav/lab1/ex1.cpp
+/root/cav/cav/lab1/ex1.cpp
 iostream
 -
 string
@@ -18,5 +18,7 @@ map
 algorithm
 -
 fstream
+-
+sstream
 -
 

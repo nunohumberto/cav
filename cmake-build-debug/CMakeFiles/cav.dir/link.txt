@@ -1,1 +1,1 @@
-/usr/bin/c++  -g   CMakeFiles/cav.dir/lab1/ex1.cpp.o  -o cav 
+/usr/bin/c++  -g   CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o  -o cav 

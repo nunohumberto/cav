@@ -123,32 +123,32 @@ cav/fast:
 	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/build
 .PHONY : cav/fast
 
-lab1/ex1.o: lab1/ex1.cpp.o
+cav/lab1/ex1.o: cav/lab1/ex1.cpp.o
 
-.PHONY : lab1/ex1.o
+.PHONY : cav/lab1/ex1.o
 
 # target to build an object file
-lab1/ex1.cpp.o:
-	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/lab1/ex1.cpp.o
-.PHONY : lab1/ex1.cpp.o
+cav/lab1/ex1.cpp.o:
+	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o
+.PHONY : cav/lab1/ex1.cpp.o
 
-lab1/ex1.i: lab1/ex1.cpp.i
+cav/lab1/ex1.i: cav/lab1/ex1.cpp.i
 
-.PHONY : lab1/ex1.i
+.PHONY : cav/lab1/ex1.i
 
 # target to preprocess a source file
-lab1/ex1.cpp.i:
-	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/lab1/ex1.cpp.i
-.PHONY : lab1/ex1.cpp.i
+cav/lab1/ex1.cpp.i:
+	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/cav/lab1/ex1.cpp.i
+.PHONY : cav/lab1/ex1.cpp.i
 
-lab1/ex1.s: lab1/ex1.cpp.s
+cav/lab1/ex1.s: cav/lab1/ex1.cpp.s
 
-.PHONY : lab1/ex1.s
+.PHONY : cav/lab1/ex1.s
 
 # target to generate assembly for a file
-lab1/ex1.cpp.s:
-	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/lab1/ex1.cpp.s
-.PHONY : lab1/ex1.cpp.s
+cav/lab1/ex1.cpp.s:
+	$(MAKE) -f CMakeFiles/cav.dir/build.make CMakeFiles/cav.dir/cav/lab1/ex1.cpp.s
+.PHONY : cav/lab1/ex1.cpp.s
 
 # Help Target
 help:
@@ -159,9 +159,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... cav"
-	@echo "... lab1/ex1.o"
-	@echo "... lab1/ex1.i"
-	@echo "... lab1/ex1.s"
+	@echo "... cav/lab1/ex1.o"
+	@echo "... cav/lab1/ex1.i"
+	@echo "... cav/lab1/ex1.s"
 .PHONY : help
 
 

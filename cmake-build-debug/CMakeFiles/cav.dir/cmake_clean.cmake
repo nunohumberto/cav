@@ -1,5 +1,5 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/cav.dir/lab1/ex1.cpp.o"
+  "CMakeFiles/cav.dir/cav/lab1/ex1.cpp.o"
   "cav.pdb"
   "cav"
 )
