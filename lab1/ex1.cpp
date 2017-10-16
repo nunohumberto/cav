@@ -5,7 +5,7 @@
 #include <algorithm>
 
 #define CONTEXT_SIZE 1
-#define RESULT_SIZE 20
+#define RESULT_SIZE 50
 #define ORDER 1
 
 using namespace std;
@@ -102,13 +102,14 @@ int main(int argc, char* argv[]) {
 
         for (map<char, int>::iterator inner = setmap[w].begin(); inner != setmap[w].end(); ++inner) {
             int bnum = setmap[w][inner->first];
-            if (bnum > maxbnum && bnum/dataset.size() >= textPercent[inner->first]) {
+            if (bnum > maxbnum && ((double) bnum)/dataset.size() >= textPercent[inner->first]) {
                 maxbnum = bnum;
                 b = inner->first;
                 wfound = true;
             }
         }
 
+        cout << "wfound = " << wfound << '\n';
         if(!wfound){ //if context not found
             int maxnum = 0;
             int i;
@@ -125,7 +126,7 @@ int main(int argc, char* argv[]) {
         cout << "Added " << b << endl;
         result = result + b;
 
-        cout << "Result " << result << endl;
+        cout << "Result: '" << result << '\'' << endl;
     }
 
     cout << result << endl;
