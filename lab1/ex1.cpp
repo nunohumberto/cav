@@ -21,7 +21,7 @@ class FCM {
         void calculateModel();
         void printStatistics();
         void printStatistics(string);
-        void printEntropy(int);
+        void printEntropy(double);
         string generateText(int);
 };
 
@@ -74,9 +74,41 @@ void FCM::calculateModel() {
         setmap[s][dataset[i+ORDER]]++;
     }
 }
-void FCM::printEntropy(int alpha) {
+void FCM::printEntropy(double alpha) {
 
-    double entropy;
+    double entropy = 0;
+
+    double global_sum = 0;
+
+    map<string, map<char,int> >::iterator it;
+
+    for (it = setmap.begin(); it != setmap.end(); ++it) {
+        for (map<char, int>::iterator inner = setmap[it->first].begin(); inner != setmap[it->first].end(); ++inner) {
+            global_sum += setmap[it->first][inner->first];
+            global_sum += alpha;
+        }
+    }
+
+    for (it = setmap.begin(); it != setmap.end(); ++it) {
+        double sum = 0;
+        for (map<char, int>::iterator inner = setmap[it->first].begin(); inner != setmap[it->first].end(); ++inner) {
+            sum += setmap[it->first][inner->first];
+            sum += alpha;
+        }
+
+        double PSi = sum/global_sum;
+
+        double state_entropy = 0;
+
+        for (map<char, int>::iterator inner = setmap[it->first].begin(); inner != setmap[it->first].end(); ++inner) {
+            double pbw = (setmap[it->first][inner->first]+alpha)/sum;
+            state_entropy += (- pbw * log2(pbw));
+        }
+
+        entropy += (PSi * state_entropy);
+
+    }
+
 
     cout << "Entropy: " << entropy << endl;
 
@@ -244,7 +276,7 @@ int main(int argc, char* argv[]) {
     cin >> context_test_value;
     fcm.printStatistics(context_test_value);
 
-    int alpha;
+    double alpha;
     cout << "Input an alpha to calculate entropy: ";
     cin >> alpha;
     fcm.printEntropy(alpha);
