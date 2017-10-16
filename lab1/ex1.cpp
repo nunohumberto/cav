@@ -18,7 +18,9 @@ class FCM {
         FCM(int);
         void addToDataset(char);
         void addToDataset(string);
-        void fillInternalMap();
+        void calculateModel();
+        void printStatistics();
+        void printStatistics(string);
         string generateText(int);
 };
 
@@ -34,7 +36,33 @@ void FCM::addToDataset(string c) {
     dataset = dataset + c;
 };
 
-void FCM::fillInternalMap() {
+void FCM::printStatistics() {
+    if (!(dataset.size() >= ORDER)) {
+        cerr << "Not enough data collected.\n";
+        return;
+    }
+    string context = dataset.substr(dataset.length()-ORDER);
+    cout << "Actual context: '" << context << "'\n";
+    printStatistics(context);
+
+}
+
+void FCM::printStatistics(string context) {
+    if (setmap.count(context) == 0) {
+        cout << "Context: '" << context << "' not present in the model. Exiting.\n";
+        exit(1);
+        return;
+    }
+
+    cout << "Given the context: '" << context << "', the following occurrences were registered:\n";
+    for (map<char, int>::iterator inner = setmap[context].begin(); inner != setmap[context].end(); ++inner) {
+        cout << "'" << inner->first << "': " << setmap[context][inner->first] << endl;
+    }
+
+    //TODO - print the map inside this entry
+}
+
+void FCM::calculateModel() {
     for(int i = 0; i < dataset.size()-ORDER; i++) {
         string s(dataset, i, ORDER);
         //string s = "a";
@@ -191,11 +219,21 @@ int main(int argc, char* argv[]) {
     int order = stoi(argv[2]);
     int len = stoi(argv[3]);
 
+    if (dataset.size() < order) {
+        cout << "Input text too short for the selected order.\n";
+    }
+
+
 
     FCM fcm(order);
 
     fcm.addToDataset(dataset);
-    fcm.fillInternalMap();
+    fcm.calculateModel();
+    fcm.printStatistics();
+    string context_test_value;
+    cout << "Input a context to obtain statistics (order " << order << "): ";
+    cin >> context_test_value;
+    fcm.printStatistics(context_test_value);
 
     ofstream output;
     string outfilename("output.txt");
