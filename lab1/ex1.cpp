@@ -21,6 +21,7 @@ class FCM {
         void calculateModel();
         void printStatistics();
         void printStatistics(string);
+        void printEntropy(double, double);
         string generateText(int);
 };
 
@@ -49,8 +50,8 @@ void FCM::printStatistics() {
 
 void FCM::printStatistics(string context) {
     if (setmap.count(context) == 0) {
-        cout << "Context: '" << context << "' not present in the model. Exiting.\n";
-        exit(1);
+        cout << "Context: '" << context << "' not present in the model.\n";// Exiting.\n";
+        //exit(1);
         return;
     }
 
@@ -72,6 +73,63 @@ void FCM::calculateModel() {
         }
         setmap[s][dataset[i+ORDER]]++;
     }
+}
+
+void FCM::printEntropy(double alpha, double alpha2) {
+
+    double entropy = 0;
+
+    double global_sum = 0;
+
+    map<string, map<char,int> >::iterator it;
+
+    for (it = setmap.begin(); it != setmap.end(); ++it) {
+        for (map<char, int>::iterator inner = setmap[it->first].begin(); inner != setmap[it->first].end(); ++inner) {
+            global_sum += setmap[it->first][inner->first];
+            global_sum += alpha;
+        }
+    }
+
+    for (it = setmap.begin(); it != setmap.end(); ++it) {
+        double sum = 0, sum_no_alpha = 0;
+        for (map<char, int>::iterator inner = setmap[it->first].begin(); inner != setmap[it->first].end(); ++inner) {
+            sum += setmap[it->first][inner->first];
+            sum += alpha2;
+            sum_no_alpha += setmap[it->first][inner->first];
+        }
+
+        double PSi = (sum_no_alpha+alpha)/global_sum;
+
+        double state_entropy = 0;
+
+        for (map<char, int>::iterator inner = setmap[it->first].begin(); inner != setmap[it->first].end(); ++inner) {
+            double pbw = (setmap[it->first][inner->first]+alpha2)/sum;
+            state_entropy += (- pbw * log2(pbw));
+        }
+
+        entropy += (PSi * state_entropy);
+
+    }
+
+
+    double Po = 0;
+    map <char, int> unique;
+    for(int i = 0; i< dataset.size() ; i++) {
+        if(unique.count(dataset[i])) unique[i] = 0;
+        unique[dataset[i]]++;
+    }
+
+    double powpow = pow(unique.size(), ORDER);
+
+    double no = powpow - setmap.size();
+    Po = (no * alpha)/ (global_sum+alpha*powpow);
+
+
+    entropy += (Po * log2(powpow));
+
+
+    cout << "Entropy: " << entropy << endl;
+
 }
 
 string FCM::generateText(int length) {
@@ -117,7 +175,7 @@ string FCM::generateText(int length) {
         //cout << "Context: '" << w << '\'' << endl;
 
 
-
+        // filling the result setmap
         for(int i = 0; i < result.size()-ORDER; i++) {
             string s(result, i, ORDER);
             //string s = "a";
@@ -128,7 +186,7 @@ string FCM::generateText(int length) {
             result_setmap[s][result[i+ORDER]]++;
         }
 
-
+        // updating textPercent
         for(int i = 0; i < dataset.size()-ORDER; i++) {
             if(textPercent.count(dataset[i]) == 0){
                 long n = std::count(result.begin(), result.end(), dataset[i]);
@@ -138,11 +196,9 @@ string FCM::generateText(int length) {
         }
 
 
-
-
-
         int maxbnum = 0;
 
+        // producing the next char
         for (map<char, int>::iterator inner = setmap[w].begin(); inner != setmap[w].end(); ++inner) {
             int bnum = setmap[w][inner->first];
             double percent_in_result = -1;
@@ -170,6 +226,7 @@ string FCM::generateText(int length) {
             }
         }
 
+        // if context not found
         //cout << "wfound = " << wfound << '\n';
         if(!wfound){ //if context not found
             long maxnum = 0;
@@ -192,7 +249,7 @@ string FCM::generateText(int length) {
 
         //cout << "Result: '" << result << '\'' << endl;
     }
-    return result;
+    return result + "\n";
 
 
 }
@@ -216,11 +273,12 @@ int main(int argc, char* argv[]) {
         input.close();
     }
 
-    int order = stoi(argv[2]);
-    int len = stoi(argv[3]);
+    int order = std::stoi(argv[2]);
+    int len = std::stoi(argv[3]);
 
-    if (dataset.size() < order) {
+    if (dataset.size() <= order) {
         cout << "Input text too short for the selected order.\n";
+        exit(1);
     }
 
 
@@ -230,10 +288,19 @@ int main(int argc, char* argv[]) {
     fcm.addToDataset(dataset);
     fcm.calculateModel();
     fcm.printStatistics();
+
     string context_test_value;
     cout << "Input a context to obtain statistics (order " << order << "): ";
     cin >> context_test_value;
     fcm.printStatistics(context_test_value);
+
+    double alpha, alpha2;
+    cout << "Input an alpha to calculate entropy of each context: ";
+    cin >> alpha;
+    cout << "Input an alpha2 to calculate the probability of each character in a context: ";
+    cin >> alpha2;
+
+    fcm.printEntropy(alpha, alpha2);
 
     ofstream output;
     string outfilename("output.txt");
