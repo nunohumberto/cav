@@ -5,36 +5,55 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
+#include <limits>
 
 using namespace std;
 
-void drawHistogram(map<short,int> sndmap) {
+void drawHistogram(map<short,int> sndmap, string window_name) {
 
     int histsize = 256*256;
-
+    int total = 0;
     int arr[256*256];
-
     for (int value = 0; value < 256*256; value++) {
-        arr[value] = sndmap.count(value) == 0 ? 0 : sndmap[value];
+        arr[value] = sndmap.count(value-32768) == 0 ? 0 : sndmap[value-32768];
         //cout << value << " -> " << arr[value] << endl;
+        total+= arr[value];
     }
+
+    if (window_name == "Histogram - L") cerr << "TOTAL SAMPLES: " << total << endl;
+
+    map<short, int>::iterator it;
+
+    short min = 0;
+    short maxim = 0;
+    short val;
+    for (it = sndmap.begin(); it != sndmap.end(); ++it) {
+        val = it->first;
+        if (val < min) min = val;
+        if (val > maxim) maxim = val;
+
+    }
+
+    cerr << "Minimum: " << SHRT_MIN << "\nMaximum: " << SHRT_MAX << "\n";
 
     cout << "Array filled.\n";
 
 
-    cv::Mat in(1, 256*256, CV_8U, arr);
+    cv::Mat in(1, 256*256, CV_32S, arr);
 
-    /*for (int value = 0; value < 20; value++) {
-        cout << value << " -> " << in.at<int>(0, 65535-value) << endl;
-    }*/
+    if(window_name == "Histogram - L") {
+        for (int value = 0; value < 256 * 256; value++) {
+            cout << value - 32767 << " -> " << in.at<int>(0, value) << endl;
+        }
+    }
 
 
     // cv::Mat im(320, 240, CV_8UC3, cv::Scalar(0,0,0));
     cout << "Matrix created.\n";
 
     //cv::Mat b_hist = in;
-    cv::Mat b_hist(256*256, 1, CV_8U, cv::Scalar(0, 0,0));
-    b_hist = in;
+    //cv::Mat b_hist(256*256, 1, CV_8U, cv::Scalar(0, 0,0));
+    cv::Mat b_hist = in;
     int max = -1, new_val;
     for (int i = 0; i < 256*256 /*256*/; i++) {
         //cout << i << " -> " << in.at<int>(0, i) << endl;
@@ -50,7 +69,7 @@ void drawHistogram(map<short,int> sndmap) {
     //}
 
 
-    cv::namedWindow("Histogram", cv::WINDOW_AUTOSIZE);// Create a window for display.
+    cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);// Create a window for display.
 
     cout << "Matrix displayed.\n";
     //cerr << "Size: (in)" << in.cols << "x" << in.rows << endl;
@@ -62,17 +81,25 @@ void drawHistogram(map<short,int> sndmap) {
     //}
 
     //int hist_w = 512; int hist_h = 400;
-    int hist_w = 512;
-    int hist_h = 400;
+    int hist_w = 1024;
+    int hist_h = 200;
 
     int bin_w = cvRound((double) histsize / hist_w); //256;//cvRound((double) hist_w / histsize);
 
-    cv::Mat histImage(hist_h, hist_w, CV_8UC3, cv::Scalar(0, 0));
-    //normalize(b_hist, b_hist, 0, histImage.rows, cv::NORM_MINMAX, -1, cv::Mat());
 
-    //for (int value = 0; value < 20; value++) {
+    //for (int value = 0; value < 256*256; value++) {
     //    cout << value << " -> " << b_hist.at<int>(0, value) << endl;
     //}
+
+    //cout <<"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
+
+    cv::Mat histImage(hist_h, hist_w, CV_8UC3, cv::Scalar(0, 0));
+    //    normalize(b_hist, b_hist, 0, histImage.rows, cv::NORM_MINMAX, -1);
+    //normalize(b_hist, b_hist, 0, histImage.rows, cv::NORM_MINMAX, CV_32S);
+
+    for (int value = 0; value < 256*256; value++) {
+        //cout << value << " -> " << b_hist.at<int>(0, value) << endl;
+    }
 
 
     /*for (int i = 1; i < histsize; i++) {
@@ -83,6 +110,7 @@ void drawHistogram(map<short,int> sndmap) {
     }*/
 
     int points = histsize/bin_w;
+    double pointArray[points];
     cout << "Generating an histogram with " << points << " points.\n";
     double avg = 0, last_avg = 0;
     for(int i = 0; i < points; i++) {
@@ -90,13 +118,34 @@ void drawHistogram(map<short,int> sndmap) {
         avg = 0;
         for(int j = 0; j < bin_w; j++) {
             avg += b_hist.at<int>(i*bin_w+j);
-
+            if (i==128) {
+                //cout << "Adding to avg: " << b_hist.at<int>(i*bin_w+j) << endl;
+            }
         }
         avg /= bin_w;
+        pointArray[i] = avg;
+        //cout << "Point " << i  << ": " << avg << endl;
+        //line(histImage,
+        //     cv::Point(i, hist_h - (cvRound(last_avg)+1)),
+        //     cv::Point(i+1, hist_h - (cvRound(avg)+1)),
+        //     cv::Scalar(250, 255, 0), 1, 8, 0);
 
+    }
+
+
+    cv::Mat average(1, points, CV_64F, pointArray);
+    normalize(average, average, 0, hist_h, cv::NORM_MINMAX, CV_64F);
+
+    //for (int value = 0; value < points; value++) {
+    //    cout << value << " -> " << average.at<double>(0, value) << endl;
+    //}
+
+
+    for(int i = 1; i < points; i++) {
+        //cout << i << " -> " << cvRound(average.at<double>(0, i)) << endl;
         line(histImage,
-             cv::Point(i, hist_h - cvRound(last_avg)),
-             cv::Point(i+1, hist_h - cvRound(avg)),
+             cv::Point(i-1, hist_h - (cvRound(average.at<double>(0, i-1))+1)),
+             cv::Point(i, hist_h - (cvRound(average.at<double>(0, i))+1)),
              cv::Scalar(250, 255, 0), 1, 8, 0);
 
     }
@@ -118,14 +167,17 @@ void drawHistogram(map<short,int> sndmap) {
     with_border = histImage;
 
 
-    /*cv::copyMakeBorder(histImage, with_border, top, bottom, left, right, cv::BORDER_CONSTANT,
-                       cv::Scalar(255, 255, 255));
+    cv::copyMakeBorder(histImage, with_border, top, bottom, left, right, cv::BORDER_CONSTANT,
+                       cv::Scalar(0, 0, 0));
 
 
-    putText(with_border, to_string(max), cv::Point(3, 35), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
-    putText(with_border, to_string(0), cv::Point(7 * num_digits, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
-    putText(with_border, to_string(histsize-1), cv::Point(with_border.cols - 63, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(0, 0, 0), 1, 8);
-    */cv::imshow("Histogram", with_border);
+    putText(with_border, to_string(max), cv::Point(7*num_digits, 20), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
+    putText(with_border, to_string(0), cv::Point(13 * num_digits, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
+    putText(with_border, to_string(histsize-1), cv::Point(with_border.cols - 63, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
+
+
+    cv::imshow(window_name, with_border);
+
 
 }
 
@@ -167,7 +219,12 @@ int main(int argc, char **argv) {
     short *sample = new short[2];
     sf_count_t nSamples = 2;
 
-    map<short, int> sndmap;
+    map<short, int> sndmapL;
+    map<short, int> sndmapR;
+    map<short, int> sndmapALL;
+    map<short, int> sndmapAVG;
+
+
 
     if (argc < 3) {
         fprintf(stderr, "Usage: wavCopy <input file> <output file>\n");
@@ -187,19 +244,36 @@ int main(int argc, char **argv) {
 
     int max = -1;
     for (i = 0; i < soundFileIn.frames(); i++) {
-        if (soundFileIn.read(sample, nSamples) == 0) {
+        if (soundFileIn.read(sample, soundFileIn.channels()) == 0) {
             fprintf(stderr, "Error: Reached end of file %d\n", i);
             break;
         }
 
         if (sample[0] > max) max = sample[0];
-        if (sample[1] > max) max = sample[1];
+        if(soundFileIn.channels() == 2) {
+            if (sample[1] > max) max = sample[1];
+            if (sndmapL.count(sample[1]) == 0) sndmapL[sample[1]] = 0;
+            if (sndmapR.count(sample[1]) == 0) sndmapR[sample[1]] = 0;
+            if (sndmapAVG.count((sample[0]+sample[1])/2) == 0) sndmapAVG[(sample[0]+sample[1])/2] = 0;
+            if (sndmapALL.count(sample[1]) == 0) sndmapALL[sample[1]] = 0;
+            sndmapR[sample[1]] = sndmapR[sample[1]] + 1;
+            sndmapALL[sample[1]] = sndmapALL[sample[1]] + 1;
+            sndmapAVG[(sample[0]+sample[1])/2] = sndmapAVG[(sample[0]+sample[1])/2] + 1;
+        }
 
 
-        if (sndmap.count(sample[0]) == 0) sndmap[sample[0]] = 0;
-        if (sndmap.count(sample[1]) == 0) sndmap[sample[1]] = 0;
-        sndmap[sample[0]] = sndmap[sample[0]] + 1;
-        sndmap[sample[1]] = sndmap[sample[1]] + 1;
+        if (sndmapL.count(sample[0]) == 0) sndmapL[sample[0]] = 0;
+
+        if (sndmapR.count(sample[0]) == 0) sndmapR[sample[0]] = 0;
+
+        if (sndmapAVG.count(sample[0]) == 0) sndmapAVG[sample[0]] = 0;
+
+        if (sndmapALL.count(sample[0]) == 0) sndmapALL[sample[0]] = 0;
+
+
+        sndmapL[sample[0]] = sndmapL[sample[0]] + 1;
+
+        sndmapALL[sample[0]] = sndmapALL[sample[0]] + 1;
 
 
         if (soundFileOut.write(sample, nSamples) != 2) {
@@ -209,8 +283,13 @@ int main(int argc, char **argv) {
     }
 
     cerr << "Will now calculate entropy!\n";
-    calcEntropy(sndmap);
-    drawHistogram(sndmap);
+    calcEntropy(sndmapALL);
+    drawHistogram(sndmapL, "Histogram - L");
+    if(soundFileIn.channels() == 2) {
+        drawHistogram(sndmapR, "Histogram - R");
+        drawHistogram(sndmapAVG, "Histogram - Mono");
+        drawHistogram(sndmapALL, "total");
+    }
     cvWaitKey(0);
 
 
