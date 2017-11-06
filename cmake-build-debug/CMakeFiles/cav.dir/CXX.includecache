@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/nuno/cav/cav/assignment2/wavCopy.cpp
+stdio.h
+-
+stdlib.h
+-
+map
+-
+sndfile.hh
+-
+opencv2/highgui/highgui.hpp
+/home/nuno/cav/cav/assignment2/opencv2/highgui/highgui.hpp
+opencv2/imgproc/imgproc.hpp
+/home/nuno/cav/cav/assignment2/opencv2/imgproc/imgproc.hpp
+iostream
+-
+limits
+-
+

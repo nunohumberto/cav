@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/cav.dir/assignment2/wavCopy.cpp.o  -o cav 

@@ -34,18 +34,18 @@ void drawHistogram(map<short,int> sndmap, string window_name) {
 
     }
 
-    cerr << "Minimum: " << SHRT_MIN << "\nMaximum: " << SHRT_MAX << "\n";
+    //cerr << "Minimum: " << SHRT_MIN << "\nMaximum: " << SHRT_MAX << "\n";
 
     cout << "Array filled.\n";
 
 
     cv::Mat in(1, 256*256, CV_32S, arr);
 
-    if(window_name == "Histogram - L") {
+    /*if(window_name == "Histogram - L") {
         for (int value = 0; value < 256 * 256; value++) {
             cout << value - 32767 << " -> " << in.at<int>(0, value) << endl;
         }
-    }
+    }*/
 
 
     // cv::Mat im(320, 240, CV_8UC3, cv::Scalar(0,0,0));
@@ -147,6 +147,12 @@ void drawHistogram(map<short,int> sndmap, string window_name) {
              cv::Point(i-1, hist_h - (cvRound(average.at<double>(0, i-1))+1)),
              cv::Point(i, hist_h - (cvRound(average.at<double>(0, i))+1)),
              cv::Scalar(250, 255, 0), 1, 8, 0);
+        if (i == points/2) {
+            line(histImage,
+                 cv::Point(i, 0),
+                 cv::Point(i, hist_h),
+                 cv::Scalar(75, 66, 244), 1, 8, 0);
+        }
 
     }
 
@@ -158,6 +164,8 @@ void drawHistogram(map<short,int> sndmap, string window_name) {
         temp_max /= 10;
     } while (temp_max);
 
+
+    if (num_digits < 6) num_digits = 6;
 
     int top = (int) (0.07 * histImage.rows);
     int bottom = (int) (0.07 * histImage.rows);
@@ -172,8 +180,8 @@ void drawHistogram(map<short,int> sndmap, string window_name) {
 
 
     putText(with_border, to_string(max), cv::Point(7*num_digits, 20), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
-    putText(with_border, to_string(0), cv::Point(13 * num_digits, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
-    putText(with_border, to_string(histsize-1), cv::Point(with_border.cols - 63, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
+    putText(with_border, to_string(-32767), cv::Point(7 * num_digits, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
+    putText(with_border, to_string(32767), cv::Point(with_border.cols - 63, with_border.rows - 17), cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(255, 255, 255), 1, 8);
 
 
     cv::imshow(window_name, with_border);

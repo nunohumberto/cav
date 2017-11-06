@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o  -o assignment2  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lsndfile -lopencv_core -lopencv_imgproc -lopencv_highgui 
