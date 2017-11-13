@@ -9,7 +9,19 @@
 
 using namespace std;
 
-void drawHistogram(map<short,int> sndmap, string window_name) {
+class AudioEntropy{
+public:
+    AudioEntropy();
+    void drawHistogram(map<short,int>, string);
+    void calcEntropy(map<short,int>);
+
+};
+
+AudioEntropy::AudioEntropy() {
+
+}
+
+void AudioEntropy::drawHistogram(map<short,int> sndmap, string window_name) {
 
     int histsize = 256*256;
     int total = 0;
@@ -239,6 +251,8 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    AudioEntropy ae;
+
     soundFileIn = SndfileHandle(argv[1]);
 
     int channels = 2;
@@ -292,11 +306,11 @@ int main(int argc, char **argv) {
 
     cerr << "Will now calculate entropy!\n";
     calcEntropy(sndmapALL);
-    drawHistogram(sndmapL, "Histogram - L");
+    ae.drawHistogram(sndmapL, "Histogram - L");
     if(soundFileIn.channels() == 2) {
-        drawHistogram(sndmapR, "Histogram - R");
-        drawHistogram(sndmapAVG, "Histogram - Mono");
-        drawHistogram(sndmapALL, "total");
+        ae.drawHistogram(sndmapR, "Histogram - R");
+        ae.drawHistogram(sndmapAVG, "Histogram - Mono");
+        ae.drawHistogram(sndmapALL, "total");
     }
     cvWaitKey(0);
 

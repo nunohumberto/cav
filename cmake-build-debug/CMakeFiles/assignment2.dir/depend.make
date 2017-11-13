@@ -34,7 +34,6 @@ CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/core/types_c.h
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/core/utility.hpp
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/core/version.hpp
-CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/core/vsx_utils.hpp
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/features2d.hpp
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/flann.hpp
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/flann/all_indices.h
@@ -125,6 +124,12 @@ CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/videostab/ring_buffer.hpp
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/videostab/stabilizer.hpp
 CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/videostab/wobble_suppression.hpp
-CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/sndfile.h
-CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/sndfile.hh
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/viz.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/viz/types.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/viz/viz3d.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/viz/vizcore.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/viz/widgets.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/xfeatures2d.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/xfeatures2d/cuda.hpp
+CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o: /usr/local/include/opencv2/xfeatures2d/nonfree.hpp
 

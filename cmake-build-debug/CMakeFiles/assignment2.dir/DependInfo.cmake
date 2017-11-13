@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/nuno/cav/cav/assignment2/wavCopy.cpp" "/home/nuno/cav/cav/cmake-build-debug/CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o"
+  "/home/mikael/Documents/cav/cav/assignment2/wavCopy.cpp" "/home/mikael/Documents/cav/cav/cmake-build-debug/CMakeFiles/assignment2.dir/assignment2/wavCopy.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
