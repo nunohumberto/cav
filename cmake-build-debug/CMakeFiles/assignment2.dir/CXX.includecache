@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/mikael/Documents/cav/cav/assignment2/wavCopy.cpp
+/Users/nunohumberto/cav/cav/assignment2/wavCopy.cpp
 stdio.h
 -
 stdlib.h
@@ -16,10 +16,12 @@ map
 sndfile.hh
 -
 opencv2/highgui/highgui.hpp
-/home/mikael/Documents/cav/cav/assignment2/opencv2/highgui/highgui.hpp
+/Users/nunohumberto/cav/cav/assignment2/opencv2/highgui/highgui.hpp
 opencv2/imgproc/imgproc.hpp
-/home/mikael/Documents/cav/cav/assignment2/opencv2/imgproc/imgproc.hpp
+/Users/nunohumberto/cav/cav/assignment2/opencv2/imgproc/imgproc.hpp
 iostream
+-
+vector
 -
 limits
 -
@@ -89,6 +91,8 @@ opencv2/core/cvstd.hpp
 /usr/local/include/opencv2/core/opencv2/core/cvstd.hpp
 opencv2/core/neon_utils.hpp
 /usr/local/include/opencv2/core/opencv2/core/neon_utils.hpp
+opencv2/core/vsx_utils.hpp
+/usr/local/include/opencv2/core/opencv2/core/vsx_utils.hpp
 
 /usr/local/include/opencv2/core/bufferpool.hpp
 
@@ -151,6 +155,8 @@ arm_neon.h
 -
 arm_neon.h
 -
+altivec.h
+-
 emmintrin.h
 -
 Intrin.h
@@ -158,6 +164,8 @@ Intrin.h
 arm_neon.h
 -
 arm_neon.h
+-
+altivec.h
 -
 
 /usr/local/include/opencv2/core/cv_cpu_helper.h
@@ -237,6 +245,8 @@ opencv2/core/types.hpp
 /usr/local/include/opencv2/core/opencv2/core/types.hpp
 opencv2/core/bufferpool.hpp
 /usr/local/include/opencv2/core/opencv2/core/bufferpool.hpp
+type_traits
+-
 opencv2/core/mat.inl.hpp
 /usr/local/include/opencv2/core/opencv2/core/mat.inl.hpp
 
@@ -340,7 +350,13 @@ opencv2/core/core_c.h
 
 /usr/local/include/opencv2/core/version.hpp
 
+/usr/local/include/opencv2/core/vsx_utils.hpp
+opencv2/core/cvdef.h
+/usr/local/include/opencv2/core/opencv2/core/cvdef.h
+
 /usr/local/include/opencv2/features2d.hpp
+opencv2/opencv_modules.hpp
+/usr/local/include/opencv2/opencv2/opencv_modules.hpp
 opencv2/core.hpp
 /usr/local/include/opencv2/opencv2/core.hpp
 opencv2/flann/miniflann.hpp
@@ -871,6 +887,8 @@ opencv2/objdetect/objdetect_c.h
 /usr/local/include/opencv2/opencv2/objdetect/objdetect_c.h
 
 /usr/local/include/opencv2/objdetect/detection_based_tracker.hpp
+opencv2/core.hpp
+-
 vector
 -
 
@@ -1274,44 +1292,6 @@ opencv2/videostab/global_motion.hpp
 opencv2/videostab/log.hpp
 /usr/local/include/opencv2/videostab/opencv2/videostab/log.hpp
 
-/usr/local/include/opencv2/viz.hpp
-opencv2/viz/types.hpp
--
-opencv2/viz/widgets.hpp
--
-opencv2/viz/viz3d.hpp
--
-opencv2/viz/vizcore.hpp
--
-
-/usr/local/include/opencv2/viz/types.hpp
-string
--
-opencv2/core.hpp
--
-opencv2/core/affine.hpp
--
-
-/usr/local/include/opencv2/viz/viz3d.hpp
-opencv2/core.hpp
--
-opencv2/viz/types.hpp
--
-opencv2/viz/widgets.hpp
--
-
-/usr/local/include/opencv2/viz/vizcore.hpp
-opencv2/viz/types.hpp
--
-opencv2/viz/widgets.hpp
--
-opencv2/viz/viz3d.hpp
--
-
-/usr/local/include/opencv2/viz/widgets.hpp
-opencv2/viz/types.hpp
--
-
 /usr/local/include/opencv2/xfeatures2d.hpp
 opencv2/features2d.hpp
 /usr/local/include/opencv2/opencv2/features2d.hpp
@@ -1325,4 +1305,20 @@ opencv2/core/cuda.hpp
 /usr/local/include/opencv2/xfeatures2d/nonfree.hpp
 opencv2/features2d.hpp
 /usr/local/include/opencv2/xfeatures2d/opencv2/features2d.hpp
+
+/usr/local/include/sndfile.h
+stdio.h
+-
+stdint.h
+-
+sys/types.h
+-
+
+/usr/local/include/sndfile.hh
+sndfile.h
+-
+string
+-
+new
+-
 

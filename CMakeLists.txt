@@ -17,4 +17,3 @@ link_directories(/usr/local/lib)
 add_executable(assignment2 ${SOURCE_FILES})
 
 target_link_libraries(assignment2 sndfile opencv_core opencv_imgproc opencv_highgui)
-

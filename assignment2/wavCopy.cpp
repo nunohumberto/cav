@@ -5,6 +5,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
+#include <vector>
 #include <limits>
 
 using namespace std;
@@ -13,13 +14,15 @@ class AudioEntropy{
 public:
     AudioEntropy();
     void drawHistogram(map<short,int>, string);
-    void calcEntropy(map<short,int>);
-
+    double calcEntropy(map<short,int>);
+    map<short,int> mapFromVector(vector<short>);
 };
 
 AudioEntropy::AudioEntropy() {
 
 }
+
+
 
 void AudioEntropy::drawHistogram(map<short,int> sndmap, string window_name) {
 
@@ -201,7 +204,7 @@ void AudioEntropy::drawHistogram(map<short,int> sndmap, string window_name) {
 
 }
 
-double calcEntropy(map<short,int> sndmap) {
+double AudioEntropy::calcEntropy(map<short,int> sndmap) {
     map<short, int>::iterator it;
 
     double total = 0;
@@ -212,7 +215,7 @@ double calcEntropy(map<short,int> sndmap) {
 
     //12.82
     double p;
-    double alpha = 0.7;
+    double alpha = 0.0;
     double entropy = 0;
     for (it = sndmap.begin(); it != sndmap.end(); ++it) {
         p = (sndmap[it->first]+alpha)/(total*1.0+alpha*65536);
@@ -226,8 +229,60 @@ double calcEntropy(map<short,int> sndmap) {
 
 
     cout << "Entropy: " << -entropy << endl;
-    return -1.0;
+    return -entropy;
 
+}
+
+map<short, int> AudioEntropy::mapFromVector(vector<short> vec) {
+    map<short, int> tmpmap;
+    vector<short>::iterator it;
+
+    for(it = vec.begin(); it != vec.end(); it++) {
+        if (tmpmap.count(*it) == 0) tmpmap[*it] = 0;
+        tmpmap[*it] = tmpmap[*it] + 1;
+    }
+    return tmpmap;
+};
+
+void calculateResidues(vector<short> input, vector<short> output[]) {
+    short lastValues[4] = {0};
+    short actualValues[5] = {0};
+
+    vector<short>::iterator it;
+    for(it = input.begin(); it != input.end(); it++) {
+        actualValues[0] = *it;
+        actualValues[1] = actualValues[0] - lastValues[0];
+        actualValues[2] = actualValues[1] - lastValues[1];
+        actualValues[3] = actualValues[2] - lastValues[2];
+        actualValues[4] = actualValues[3] - lastValues[3];
+
+        output[0].push_back(actualValues[1]);
+        output[1].push_back(actualValues[2]);
+        output[2].push_back(actualValues[3]);
+        output[3].push_back(actualValues[4]);
+
+        lastValues[0] = actualValues[0];
+        lastValues[1] = actualValues[1];
+        lastValues[2] = actualValues[2];
+        lastValues[3] = actualValues[3];
+    }
+}
+
+int getResiduesWithLowestEntropy(vector<short> residues[], AudioEntropy ae) {
+    double lowest = 0, temp_entropy;
+    int lowest_entropy_index = -1;
+    bool set = false;
+    for(int i = 0; i < 4; i++) {
+        cout << "Order " << i << ": ";
+        temp_entropy = ae.calcEntropy(ae.mapFromVector(residues[i]));
+        if (temp_entropy < lowest || set == false) {
+            set = true;
+            lowest_entropy_index = i;
+            lowest = temp_entropy;
+        }
+    }
+
+    return lowest_entropy_index;
 }
 
 
@@ -243,10 +298,13 @@ int main(int argc, char **argv) {
     map<short, int> sndmapR;
     map<short, int> sndmapALL;
     map<short, int> sndmapAVG;
+    vector<short> vecL;
+    vector<short> vecR;
+    vector<short> vecALL;
+    vector<short> residues[4];
 
 
-
-    if (argc < 3) {
+    if (argc < 2) {
         fprintf(stderr, "Usage: wavCopy <input file> <output file>\n");
         return -1;
     }
@@ -255,14 +313,15 @@ int main(int argc, char **argv) {
 
     soundFileIn = SndfileHandle(argv[1]);
 
-    int channels = 2;
-    int srate = 44100;
-    soundFileOut = SndfileHandle(argv[2], SFM_WRITE,
-                                 SF_FORMAT_WAV | SF_FORMAT_PCM_16, channels, srate);
 
     fprintf(stderr, "Frames (samples): %d\n", (int) soundFileIn.frames());
     fprintf(stderr, "Samplerate: %d\n", soundFileIn.samplerate());
     fprintf(stderr, "Channels: %d\n", soundFileIn.channels());
+
+    int channels = 2;
+    int srate = 44100;
+    //soundFileOut = SndfileHandle(argv[2], SFM_WRITE,
+    //                             SF_FORMAT_WAV | SF_FORMAT_PCM_16, channels, srate);
 
     int max = -1;
     for (i = 0; i < soundFileIn.frames(); i++) {
@@ -272,41 +331,58 @@ int main(int argc, char **argv) {
         }
 
         if (sample[0] > max) max = sample[0];
-        if(soundFileIn.channels() == 2) {
-            if (sample[1] > max) max = sample[1];
-            if (sndmapL.count(sample[1]) == 0) sndmapL[sample[1]] = 0;
-            if (sndmapR.count(sample[1]) == 0) sndmapR[sample[1]] = 0;
-            if (sndmapAVG.count((sample[0]+sample[1])/2) == 0) sndmapAVG[(sample[0]+sample[1])/2] = 0;
-            if (sndmapALL.count(sample[1]) == 0) sndmapALL[sample[1]] = 0;
-            sndmapR[sample[1]] = sndmapR[sample[1]] + 1;
-            sndmapALL[sample[1]] = sndmapALL[sample[1]] + 1;
-            sndmapAVG[(sample[0]+sample[1])/2] = sndmapAVG[(sample[0]+sample[1])/2] + 1;
-        }
+
 
 
         if (sndmapL.count(sample[0]) == 0) sndmapL[sample[0]] = 0;
-
-        if (sndmapR.count(sample[0]) == 0) sndmapR[sample[0]] = 0;
-
-        if (sndmapAVG.count(sample[0]) == 0) sndmapAVG[sample[0]] = 0;
-
         if (sndmapALL.count(sample[0]) == 0) sndmapALL[sample[0]] = 0;
 
 
         sndmapL[sample[0]] = sndmapL[sample[0]] + 1;
+        vecL.push_back(sample[0]);
+
 
         sndmapALL[sample[0]] = sndmapALL[sample[0]] + 1;
+        vecALL.push_back(sample[0]);
 
 
-        if (soundFileOut.write(sample, nSamples) != 2) {
+
+
+        if(soundFileIn.channels() == 2) {
+            if (sample[1] > max) max = sample[1];
+            //if (sndmapL.count(sample[1]) == 0) sndmapL[sample[1]] = 0;
+            if (sndmapR.count(sample[1]) == 0) sndmapR[sample[1]] = 0;
+            if (sndmapAVG.count((sample[0]+sample[1])/2) == 0) sndmapAVG[(sample[0]+sample[1])/2] = 0;
+            if (sndmapALL.count(sample[1]) == 0) sndmapALL[sample[1]] = 0;
+
+            sndmapR[sample[1]] = sndmapR[sample[1]] + 1;
+            vecR.push_back(sample[1]);
+
+            sndmapALL[sample[1]] = sndmapALL[sample[1]] + 1;
+            vecALL.push_back(sample[1]);
+            sndmapAVG[(sample[0]+sample[1])/2] = sndmapAVG[(sample[0]+sample[1])/2] + 1;
+        }
+
+
+
+
+
+        /*if (soundFileOut.write(sample, nSamples) != 2) {
             fprintf(stderr, "Error writing frames to the output:\n");
             return -1;
-        }
+        }*/
     }
 
+
+
     cerr << "Will now calculate entropy!\n";
-    calcEntropy(sndmapALL);
+    ae.calcEntropy(sndmapALL);
+    calculateResidues(vecALL, residues);
+    int lowest = getResiduesWithLowestEntropy(residues, ae);
+    ae.drawHistogram(ae.mapFromVector(residues[lowest]), "Residues");
+
     ae.drawHistogram(sndmapL, "Histogram - L");
+
     if(soundFileIn.channels() == 2) {
         ae.drawHistogram(sndmapR, "Histogram - R");
         ae.drawHistogram(sndmapAVG, "Histogram - Mono");
