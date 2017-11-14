@@ -268,6 +268,52 @@ void calculateResidues(vector<short> input, vector<short> output[]) {
     }
 }
 
+vector <short> decode(vector<short> input, int order) {
+    vector<short> output;
+    vector<short>::iterator it;
+    if (order == 1) {
+        short last_val = 0;
+        for(it = input.begin(); it != input.end(); it++) {
+            output.push_back(*it + last_val);
+            last_val = *it;
+        }
+    }
+    else if (order == 2) {
+        short last_vals[2] = {0};
+        short nextval;
+        for(it = input.begin(); it != input.end(); it++) {
+            nextval = *it + ((short) 2) * last_vals[1] - last_vals[0];
+            output.push_back(nextval);
+            last_vals[0] = last_vals[1];
+            last_vals[1] = nextval;
+        }
+    }
+    else if (order == 3) {
+        short last_vals[3] = {0};
+        short nextval;
+        for(it = input.begin(); it != input.end(); it++) {
+            nextval = *it + ((short) 3) * last_vals[2] - ((short) 3) * last_vals[1] + last_vals[0];
+            output.push_back(nextval);
+            last_vals[0] = last_vals[1];
+            last_vals[1] = last_vals[2];
+            last_vals[2] = nextval;
+        }
+    }
+    else if (order == 4) {
+        short last_vals[4] = {0};
+        short nextval;
+        for(it = input.begin(); it != input.end(); it++) {
+            nextval = *it + ((short) 4) * last_vals[3] - ((short) 6) * last_vals[2] + ((short) 4) * last_vals[1] - last_vals[0];
+            output.push_back(nextval);
+            last_vals[0] = last_vals[1];
+            last_vals[1] = last_vals[2];
+            last_vals[2] = last_vals[3];
+            last_vals[3] = nextval;
+        }
+    }
+    return output;
+}
+
 int getResiduesWithLowestEntropy(vector<short> residues[], AudioEntropy ae) {
     double lowest = 0, temp_entropy;
     int lowest_entropy_index = -1;
