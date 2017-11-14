@@ -273,7 +273,7 @@ int getResiduesWithLowestEntropy(vector<short> residues[], AudioEntropy ae) {
     int lowest_entropy_index = -1;
     bool set = false;
     for(int i = 0; i < 4; i++) {
-        cout << "Order " << i << ": ";
+        cout << "Order " << i+1 << ": ";
         temp_entropy = ae.calcEntropy(ae.mapFromVector(residues[i]));
         if (temp_entropy < lowest || set == false) {
             set = true;
