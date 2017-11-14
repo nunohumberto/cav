@@ -301,6 +301,7 @@ int main(int argc, char **argv) {
     vector<short> vecL;
     vector<short> vecR;
     vector<short> vecALL;
+    vector<short> vecALLappend;
     vector<short> residues[4];
 
 
@@ -376,8 +377,12 @@ int main(int argc, char **argv) {
 
 
     cerr << "Will now calculate entropy!\n";
-    ae.calcEntropy(sndmapALL);
-    calculateResidues(vecALL, residues);
+    vecALLappend.insert(vecALLappend.end(), vecL.begin(), vecL.end());
+    vecALLappend.insert(vecALLappend.end(), vecR.begin(), vecR.end());
+
+
+    ae.calcEntropy(ae.mapFromVector(vecALLappend));
+    calculateResidues(vecALLappend, residues);
     int lowest = getResiduesWithLowestEntropy(residues, ae);
     ae.drawHistogram(ae.mapFromVector(residues[lowest]), "Residues");
 
