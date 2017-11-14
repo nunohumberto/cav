@@ -15,7 +15,12 @@ public:
     AudioEntropy();
     void drawHistogram(map<short,int>, string);
     double calcEntropy(map<short,int>);
+    double calcEntropy(map<int,int>);
+
     map<short,int> mapFromVector(vector<short>);
+    map<int,int> mapFromIntVector(vector<int>);
+
+
 };
 
 AudioEntropy::AudioEntropy() {
@@ -222,16 +227,35 @@ double AudioEntropy::calcEntropy(map<short,int> sndmap) {
         //cout << p*log2(p) <<endl;
         entropy += p*log2(p);
     }
-
-
-
-
-
-
     cout << "Entropy: " << -entropy << endl;
     return -entropy;
 
 }
+
+double AudioEntropy::calcEntropy(map<int,int> sndmap) {
+    map<int, int>::iterator it;
+
+    double total = 0;
+
+    for (it = sndmap.begin(); it != sndmap.end(); ++it) {
+        total += sndmap[it->first];
+    }
+
+    //12.82
+    double p;
+    double alpha = 0.0;
+    double entropy = 0;
+    for (it = sndmap.begin(); it != sndmap.end(); ++it) {
+        p = (sndmap[it->first]+alpha)/(total*1.0+alpha*65536);
+        //cout << p*log2(p) <<endl;
+        entropy += p*log2(p);
+    }
+    cout << "Entropy: " << -entropy << endl;
+    return -entropy;
+
+}
+
+
 
 map<short, int> AudioEntropy::mapFromVector(vector<short> vec) {
     map<short, int> tmpmap;
@@ -244,13 +268,24 @@ map<short, int> AudioEntropy::mapFromVector(vector<short> vec) {
     return tmpmap;
 };
 
-void calculateResidues(vector<short> input, vector<short> output[]) {
-    short lastValues[4] = {0};
-    short actualValues[5] = {0};
+map<int, int> AudioEntropy::mapFromIntVector(vector<int> vec) {
+    map<int, int> tmpmap;
+    vector<int>::iterator it;
 
+    for(it = vec.begin(); it != vec.end(); it++) {
+        if (tmpmap.count(*it) == 0) tmpmap[*it] = 0;
+        tmpmap[*it] = tmpmap[*it] + 1;
+    }
+    return tmpmap;
+};
+
+void calculateResidues(vector<short> input, vector<int> output[]) {
+    int lastValues[4] = {0};
+    int actualValues[5] = {0};
+    int counter = 10;
     vector<short>::iterator it;
     for(it = input.begin(); it != input.end(); it++) {
-        actualValues[0] = *it;
+        actualValues[0] = (int) *it;
         actualValues[1] = actualValues[0] - lastValues[0];
         actualValues[2] = actualValues[1] - lastValues[1];
         actualValues[3] = actualValues[2] - lastValues[2];
@@ -266,23 +301,27 @@ void calculateResidues(vector<short> input, vector<short> output[]) {
         lastValues[2] = actualValues[2];
         lastValues[3] = actualValues[3];
     }
+    //for(int i = 0; i < 10; i++) if(counter-- > 0) cout << output[0].at(i) << " ";
+    //cout << endl;
 }
 
-vector <short> decode(vector<short> input, int order) {
+vector <short> decodeResidue(vector<int> input, int order) {
     vector<short> output;
-    vector<short>::iterator it;
+    vector<int>::iterator it;
+    short nextval;
+    cout << "Using order: " << order << endl;
     if (order == 1) {
-        short last_val = 0;
+        int last_val = 0;
         for(it = input.begin(); it != input.end(); it++) {
-            output.push_back(*it + last_val);
-            last_val = *it;
+            nextval = (short) (*it + last_val);
+            output.push_back(nextval);
+            last_val = nextval;
         }
     }
     else if (order == 2) {
         short last_vals[2] = {0};
-        short nextval;
         for(it = input.begin(); it != input.end(); it++) {
-            nextval = *it + ((short) 2) * last_vals[1] - last_vals[0];
+            nextval = (short) ((short)*it + 2 * last_vals[1] - last_vals[0]);
             output.push_back(nextval);
             last_vals[0] = last_vals[1];
             last_vals[1] = nextval;
@@ -290,9 +329,8 @@ vector <short> decode(vector<short> input, int order) {
     }
     else if (order == 3) {
         short last_vals[3] = {0};
-        short nextval;
         for(it = input.begin(); it != input.end(); it++) {
-            nextval = *it + ((short) 3) * last_vals[2] - ((short) 3) * last_vals[1] + last_vals[0];
+            nextval = (short) ((short)*it + 3 * last_vals[2] - 3 * last_vals[1] + last_vals[0]);
             output.push_back(nextval);
             last_vals[0] = last_vals[1];
             last_vals[1] = last_vals[2];
@@ -301,9 +339,8 @@ vector <short> decode(vector<short> input, int order) {
     }
     else if (order == 4) {
         short last_vals[4] = {0};
-        short nextval;
         for(it = input.begin(); it != input.end(); it++) {
-            nextval = *it + ((short) 4) * last_vals[3] - ((short) 6) * last_vals[2] + ((short) 4) * last_vals[1] - last_vals[0];
+            nextval = (short) ((short)*it + 4 * last_vals[3] - 6 * last_vals[2] + 4 * last_vals[1] - last_vals[0]);
             output.push_back(nextval);
             last_vals[0] = last_vals[1];
             last_vals[1] = last_vals[2];
@@ -311,16 +348,17 @@ vector <short> decode(vector<short> input, int order) {
             last_vals[3] = nextval;
         }
     }
+    cout << endl;
     return output;
 }
 
-int getResiduesWithLowestEntropy(vector<short> residues[], AudioEntropy ae) {
+int getResiduesWithLowestEntropy(vector<int> residues[], AudioEntropy ae) {
     double lowest = 0, temp_entropy;
     int lowest_entropy_index = -1;
     bool set = false;
     for(int i = 0; i < 4; i++) {
         cout << "Order " << i+1 << ": ";
-        temp_entropy = ae.calcEntropy(ae.mapFromVector(residues[i]));
+        temp_entropy = ae.calcEntropy(ae.mapFromIntVector(residues[i]));
         if (temp_entropy < lowest || set == false) {
             set = true;
             lowest_entropy_index = i;
@@ -329,6 +367,24 @@ int getResiduesWithLowestEntropy(vector<short> residues[], AudioEntropy ae) {
     }
 
     return lowest_entropy_index;
+}
+
+vector<string> encodeGolomb(vector<int> input) {
+    vector<int>::iterator it;
+    vector<string> output;
+    int target;
+    int m = 4, q, r;
+    for(it = input.begin(); it != input.end(); it++) {
+        if(*it < 0) target = -(1 + *it * 2);
+        else target = 2 * *it;
+
+        q = target/m;
+        r = target - q * m;
+
+        output.push_back("q: " + to_string(q) + " r: " + to_string(r));
+    }
+
+    return output;
 }
 
 
@@ -348,7 +404,7 @@ int main(int argc, char **argv) {
     vector<short> vecR;
     vector<short> vecALL;
     vector<short> vecALLappend;
-    vector<short> residues[4];
+    vector<int> residues[4];
 
 
     if (argc < 2) {
@@ -426,19 +482,51 @@ int main(int argc, char **argv) {
     vecALLappend.insert(vecALLappend.end(), vecL.begin(), vecL.end());
     vecALLappend.insert(vecALLappend.end(), vecR.begin(), vecR.end());
 
+    cout << "Original samples: ";
+    for(int i = 0; i < 10; i++) cout << vecALLappend.at(i) << " ";
+
+    cout << " last: ";
+    cout << vecALLappend.at(vecALLappend.size()-1) << " ";
+    cout << endl;
+
+    short test = -1;
+
 
     ae.calcEntropy(ae.mapFromVector(vecALLappend));
     calculateResidues(vecALLappend, residues);
     int lowest = getResiduesWithLowestEntropy(residues, ae);
-    ae.drawHistogram(ae.mapFromVector(residues[lowest]), "Residues");
+    //ae.drawHistogram(ae.mapFromVector(residues[lowest]), "Residues");
 
-    ae.drawHistogram(sndmapL, "Histogram - L");
+    //ae.drawHistogram(sndmapL, "Histogram - L");
 
-    if(soundFileIn.channels() == 2) {
-        ae.drawHistogram(sndmapR, "Histogram - R");
-        ae.drawHistogram(sndmapAVG, "Histogram - Mono");
-        ae.drawHistogram(sndmapALL, "total");
+    //if(soundFileIn.channels() == 2) {
+    //    ae.drawHistogram(sndmapR, "Histogram - R");
+    //    ae.drawHistogram(sndmapAVG, "Histogram - Mono");
+    //    ae.drawHistogram(sndmapALL, "total");
+    //}
+
+
+    for(int i = 0; i < 10; i++) {
+        cout << residues[lowest].at(i) << " ";
     }
+    cout << endl;
+
+    vector<string> golomb_encoded = encodeGolomb(residues[lowest]);
+
+    for(int i = 0; i < 10; i++) {
+        cout << golomb_encoded.at(i) << endl;
+    }
+
+    vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
+
+
+    cout << "Decoded samples: ";
+    for(int i = 0; i < 10; i++) cout << decoded.at(i) << " ";
+
+    cout << " last: ";
+    cout << decoded.at(decoded.size()-1) << " ";
+    cout << endl;
+
     cvWaitKey(0);
 
 
