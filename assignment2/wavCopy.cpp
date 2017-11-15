@@ -388,7 +388,7 @@ int getResiduesWithLowestEntropy(vector<int> residues[], AudioEntropy ae) {
 int findBestM(vector<int> input) {
     vector<int>::iterator it;
     int target;
-    long long totalnobits = 0;
+    long long totalnobits = -1;
     long long last_total = LONG_LONG_MAX;
     int exponent = 2;
     int q, m = -1, last_m;
@@ -396,10 +396,10 @@ int findBestM(vector<int> input) {
     int nobits;
 
     while(totalnobits <= last_total) {
-        if(totalnobits < last_total) last_total = totalnobits;
+        if(totalnobits < last_total && totalnobits != -1) last_total = totalnobits;
         totalnobits = 0;
         last_m = m;
-        m = (int) pow(2, exponent++);
+        m = (int) pow(2, exponent);
         nobits = (int) log2(m);
         for (it = input.begin(); it != input.end(); it++) {
             if (*it < 0) target = -(1 + *it * 2);
@@ -411,12 +411,12 @@ int findBestM(vector<int> input) {
         }
 
         cout << "Expected number of bytes (M=" << m << ") " << totalnobits/8 << endl;
-
+        exponent++;
     }
 
     cout << "Found best value for M: " << last_m << endl;
 
-    return m;
+    return last_m;
 }
 
 
@@ -449,38 +449,48 @@ unsigned int buffer;
 int bitsinbuffer;
 
 
+
+int buildOnes(int n) {
+    unsigned int tmp = ~0;
+    return (tmp >> (32-n));
+}
+
 void flush(ofstream& file) {
     char towrite[1];
     while (bitsinbuffer >= 8) {
         towrite[0] = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
+        //towrite[0] = (char) 0xBA;
+        //if(ctr > 0) cout << "Writing: " << hex << (int) towrite[0] << dec << endl;
+        //if(ctr > 0) cout << "Buffer: " << hex << buffer << dec << " (" << bitsinbuffer << ")" << endl;
         file.write(towrite, 1);
-        buffer = buffer >> 8;
         bitsinbuffer -= 8;
+        buffer = buffer & buildOnes(bitsinbuffer);
+
     }
 }
+
+
 
 void forceFlush(ofstream& file) {
     char towrite[1];
     while (bitsinbuffer >= 8) {
         towrite[0] = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
         file.write(towrite, 1);
-        buffer = buffer >> 8;
         bitsinbuffer -= 8;
+        buffer = buffer & buildOnes(bitsinbuffer);
     }
     if (bitsinbuffer > 0) {
         towrite[0] = (char) ((buffer << (8 - bitsinbuffer)) & 0xFF);
         file.write(towrite, 1);
-        buffer = buffer >> bitsinbuffer;
+        buffer = 0;
         bitsinbuffer = 0;
     }
 
 }
 
-char buildByte(int n) {
-    return (char) ((0x00FF >> n) & 0xFF);
-}
 
 void writeToFile(int data, int length, char type, ofstream& file) {
+
     if (type == 'q') {
         int length_to_go = length;
         while(length_to_go >= 8) {
@@ -490,7 +500,7 @@ void writeToFile(int data, int length, char type, ofstream& file) {
             length_to_go -= 8;
         }
         if(length_to_go > 0) {
-            buffer = ((buffer << length_to_go) | ((0x00FF >> length_to_go) & 0xFF));
+            buffer = ((buffer << length_to_go) | ((0x00FF >> (8 - length_to_go)) & 0xFF));
             bitsinbuffer += length_to_go;
             flush(file);
         }
@@ -499,7 +509,7 @@ void writeToFile(int data, int length, char type, ofstream& file) {
         flush(file);
     }
     else if (type == 'r') {
-        buffer = (buffer << length) | (data & buildByte(length));
+        buffer = (buffer << length) | (data & buildOnes(length));
         bitsinbuffer += length;
         flush(file);
     }
@@ -513,6 +523,7 @@ void encodeGolombToFile(vector<int> input, int m, string filename) {
     int target;
     int q, r;
     int nbits = (int) log2(m);
+    cout << "No bits per r: " << nbits << endl;
     ofstream outfile(filename, ios::out | ios::binary);
     for(it = input.begin(); it != input.end(); it++) {
         if(*it < 0) target = -(1 + *it * 2);
@@ -638,6 +649,7 @@ int main(int argc, char **argv) {
     ae.calcEntropy(ae.mapFromVector(vecALLappend));
     calculateResidues(vecALLappend, residues);
     int lowest = getResiduesWithLowestEntropy(residues, ae);
+    //lowest = 0;
     ae.drawHistogram(ae.reducedMapFromIntVector(residues[lowest]), "Residues");
 
     ae.drawHistogram(sndmapL, "Histogram - L");
@@ -655,18 +667,18 @@ int main(int argc, char **argv) {
     cout << endl;
 
     //vector<string> golomb_encoded = encodeGolomb(residues[lowest]);
-    vector<string> golomb_encoded;
+    vector<string> fake_golomb_encoded;
 
     //for(int i = 2; i < 20; i++) {
     //    golomb_encoded = encodeGolomb(residues[lowest], (int) pow(2, i));
     //}
 
     int best_m = findBestM(residues[lowest]);
-
+    fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     cout << "Writing encoded file to: " << argv[2] << endl;
     encodeGolombToFile(residues[lowest], best_m, argv[2]);
     for(int i = 0; i < 10; i++) {
-        cout << golomb_encoded.at(i) << endl;
+        cout << fake_golomb_encoded.at(i) << endl;
     }
 
     vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
