@@ -5,6 +5,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <limits>
 
@@ -17,8 +18,9 @@ public:
     double calcEntropy(map<short,int>);
     double calcEntropy(map<int,int>);
 
-    map<short,int> mapFromVector(vector<short>);
-    map<int,int> mapFromIntVector(vector<int>);
+    map<short, int> mapFromVector(vector<short>);
+    map<short, int> reducedMapFromIntVector(vector<int>);
+    map<int, int> mapFromIntVector(vector<int>);
 
 
 };
@@ -268,6 +270,20 @@ map<short, int> AudioEntropy::mapFromVector(vector<short> vec) {
     return tmpmap;
 };
 
+
+map<short, int> AudioEntropy::reducedMapFromIntVector(vector<int> vec) {
+    map<short, int> tmpmap;
+    vector<int>::iterator it;
+    short casted;
+    for(it = vec.begin(); it != vec.end(); it++) {
+        if (*it < SHRT_MIN || *it > SHRT_MAX) continue;
+        casted = (short) *it;
+        if (tmpmap.count(casted) == 0) tmpmap[casted] = 0;
+        tmpmap[casted] = tmpmap[casted] + 1;
+    }
+    return tmpmap;
+};
+
 map<int, int> AudioEntropy::mapFromIntVector(vector<int> vec) {
     map<int, int> tmpmap;
     vector<int>::iterator it;
@@ -369,23 +385,150 @@ int getResiduesWithLowestEntropy(vector<int> residues[], AudioEntropy ae) {
     return lowest_entropy_index;
 }
 
-vector<string> encodeGolomb(vector<int> input) {
+int findBestM(vector<int> input) {
+    vector<int>::iterator it;
+    int target;
+    long long totalnobits = 0;
+    long long last_total = LONG_LONG_MAX;
+    int exponent = 2;
+    int q, m = -1, last_m;
+
+    int nobits;
+
+    while(totalnobits <= last_total) {
+        if(totalnobits < last_total) last_total = totalnobits;
+        totalnobits = 0;
+        last_m = m;
+        m = (int) pow(2, exponent++);
+        nobits = (int) log2(m);
+        for (it = input.begin(); it != input.end(); it++) {
+            if (*it < 0) target = -(1 + *it * 2);
+            else target = 2 * *it;
+
+            q = target / m;
+            totalnobits += (q + 1);
+            totalnobits += nobits;
+        }
+
+        cout << "Expected number of bytes (M=" << m << ") " << totalnobits/8 << endl;
+
+    }
+
+    cout << "Found best value for M: " << last_m << endl;
+
+    return m;
+}
+
+
+vector<string> encodeGolomb(vector<int> input, int m) {
     vector<int>::iterator it;
     vector<string> output;
     int target;
-    int m = 4, q, r;
+    long totalnobits = 0;
+    int q, r;
+    int nobits = (int) log2(m);
     for(it = input.begin(); it != input.end(); it++) {
         if(*it < 0) target = -(1 + *it * 2);
         else target = 2 * *it;
 
         q = target/m;
+        totalnobits += (q+1);
         r = target - q * m;
+        totalnobits += nobits;
 
         output.push_back("q: " + to_string(q) + " r: " + to_string(r));
     }
 
+    cout << "Expected number of bytes: " << totalnobits/8 << endl;
+
     return output;
 }
+
+
+unsigned int buffer;
+int bitsinbuffer;
+
+
+void flush(ofstream& file) {
+    char towrite[1];
+    while (bitsinbuffer >= 8) {
+        towrite[0] = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
+        file.write(towrite, 1);
+        buffer = buffer >> 8;
+        bitsinbuffer -= 8;
+    }
+}
+
+void forceFlush(ofstream& file) {
+    char towrite[1];
+    while (bitsinbuffer >= 8) {
+        towrite[0] = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
+        file.write(towrite, 1);
+        buffer = buffer >> 8;
+        bitsinbuffer -= 8;
+    }
+    if (bitsinbuffer > 0) {
+        towrite[0] = (char) ((buffer << (8 - bitsinbuffer)) & 0xFF);
+        file.write(towrite, 1);
+        buffer = buffer >> bitsinbuffer;
+        bitsinbuffer = 0;
+    }
+
+}
+
+char buildByte(int n) {
+    return (char) ((0x00FF >> n) & 0xFF);
+}
+
+void writeToFile(int data, int length, char type, ofstream& file) {
+    if (type == 'q') {
+        int length_to_go = length;
+        while(length_to_go >= 8) {
+            buffer = (buffer << 8) | 0xFF;
+            bitsinbuffer += 8;
+            flush(file);
+            length_to_go -= 8;
+        }
+        if(length_to_go > 0) {
+            buffer = ((buffer << length_to_go) | ((0x00FF >> length_to_go) & 0xFF));
+            bitsinbuffer += length_to_go;
+            flush(file);
+        }
+        buffer = buffer << 1;
+        bitsinbuffer += 1;
+        flush(file);
+    }
+    else if (type == 'r') {
+        buffer = (buffer << length) | (data & buildByte(length));
+        bitsinbuffer += length;
+        flush(file);
+    }
+    else if (type == 'f') {
+        forceFlush(file);
+    }
+}
+
+void encodeGolombToFile(vector<int> input, int m, string filename) {
+    vector<int>::iterator it;
+    int target;
+    int q, r;
+    int nbits = (int) log2(m);
+    ofstream outfile(filename, ios::out | ios::binary);
+    for(it = input.begin(); it != input.end(); it++) {
+        if(*it < 0) target = -(1 + *it * 2);
+        else target = 2 * *it;
+
+        q = target/m;
+        writeToFile(q, q, 'q', outfile);
+
+        r = target - q * m;
+        writeToFile(r, nbits, 'r', outfile);
+    }
+
+    writeToFile(0, 0, 'f', outfile);
+
+}
+
 
 
 int main(int argc, char **argv) {
@@ -495,9 +638,9 @@ int main(int argc, char **argv) {
     ae.calcEntropy(ae.mapFromVector(vecALLappend));
     calculateResidues(vecALLappend, residues);
     int lowest = getResiduesWithLowestEntropy(residues, ae);
-    //ae.drawHistogram(ae.mapFromVector(residues[lowest]), "Residues");
+    ae.drawHistogram(ae.reducedMapFromIntVector(residues[lowest]), "Residues");
 
-    //ae.drawHistogram(sndmapL, "Histogram - L");
+    ae.drawHistogram(sndmapL, "Histogram - L");
 
     //if(soundFileIn.channels() == 2) {
     //    ae.drawHistogram(sndmapR, "Histogram - R");
@@ -511,13 +654,23 @@ int main(int argc, char **argv) {
     }
     cout << endl;
 
-    vector<string> golomb_encoded = encodeGolomb(residues[lowest]);
+    //vector<string> golomb_encoded = encodeGolomb(residues[lowest]);
+    vector<string> golomb_encoded;
 
+    //for(int i = 2; i < 20; i++) {
+    //    golomb_encoded = encodeGolomb(residues[lowest], (int) pow(2, i));
+    //}
+
+    int best_m = findBestM(residues[lowest]);
+
+    cout << "Writing encoded file to: " << argv[2] << endl;
+    encodeGolombToFile(residues[lowest], best_m, argv[2]);
     for(int i = 0; i < 10; i++) {
         cout << golomb_encoded.at(i) << endl;
     }
 
     vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
+
 
 
     cout << "Decoded samples: ";
