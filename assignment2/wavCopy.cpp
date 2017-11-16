@@ -321,6 +321,33 @@ void calculateResidues(vector<short> input, vector<int> output[]) {
     //cout << endl;
 }
 
+
+void calculateResidues(vector<int> input, vector<int> output[]) {
+    int lastValues[4] = {0};
+    int actualValues[5] = {0};
+    vector<int>::iterator it;
+    for(it = input.begin(); it != input.end(); it++) {
+        actualValues[0] = (int) *it;
+        actualValues[1] = actualValues[0] - lastValues[0];
+        actualValues[2] = actualValues[1] - lastValues[1];
+        actualValues[3] = actualValues[2] - lastValues[2];
+        actualValues[4] = actualValues[3] - lastValues[3];
+
+        output[0].push_back(actualValues[1]);
+        output[1].push_back(actualValues[2]);
+        output[2].push_back(actualValues[3]);
+        output[3].push_back(actualValues[4]);
+
+        lastValues[0] = actualValues[0];
+        lastValues[1] = actualValues[1];
+        lastValues[2] = actualValues[2];
+        lastValues[3] = actualValues[3];
+    }
+    //for(int i = 0; i < 10; i++) if(counter-- > 0) cout << output[0].at(i) << " ";
+    //cout << endl;
+}
+
+
 vector <short> decodeResidue(vector<int> input, int order) {
     vector<short> output;
     vector<int>::iterator it;
@@ -385,14 +412,14 @@ int getResiduesWithLowestEntropy(vector<int> residues[], AudioEntropy ae) {
     return lowest_entropy_index;
 }
 
-int findBestM(vector<int> input) {
+int findBestM(vector<int> input, int blocksize) {
     vector<int>::iterator it;
     int target;
     long long totalnobits = -1;
     long long last_total = LONG_LONG_MAX;
     int exponent = 2;
     int q, m = -1, last_m;
-
+    int predictor_overhead = 2;
     int nobits;
 
     while(totalnobits <= last_total) {
@@ -401,13 +428,15 @@ int findBestM(vector<int> input) {
         last_m = m;
         m = (int) pow(2, exponent);
         nobits = (int) log2(m);
-        for (it = input.begin(); it != input.end(); it++) {
+        int i = 0;
+        for (it = input.begin(); it != input.end(); it++, i++) {
             if (*it < 0) target = -(1 + *it * 2);
             else target = 2 * *it;
 
             q = target / m;
             totalnobits += (q + 1);
             totalnobits += nobits;
+            if(i % blocksize == 0) totalnobits += predictor_overhead;
         }
 
         cout << "Expected number of bytes (M=" << m << ") " << totalnobits/8 << endl;
@@ -423,6 +452,7 @@ int findBestM(vector<int> input) {
 vector<string> encodeGolomb(vector<int> input, int m) {
     vector<int>::iterator it;
     vector<string> output;
+    int predictor_overhead = 2;
     int target;
     long totalnobits = 0;
     int q, r;
@@ -435,7 +465,7 @@ vector<string> encodeGolomb(vector<int> input, int m) {
         totalnobits += (q+1);
         r = target - q * m;
         totalnobits += nobits;
-
+        totalnobits += predictor_overhead;
         output.push_back("q: " + to_string(q) + " r: " + to_string(r));
     }
 
@@ -541,6 +571,190 @@ void encodeGolombToFile(vector<int> input, int m, string filename) {
 }
 
 
+int blockSumComparison(vector<int> residues[], vector<short> orig, int blocksize, int blockindex) {
+    long long tmpsum = 0;
+    long long lowest_sum;
+    int lowest_index;
+    long maxsize = orig.size();
+    for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
+        tmpsum += abs(orig.at(i));
+    }
+    lowest_sum = tmpsum;
+    lowest_index = 0;
+
+    for(int j = 0; j < 3; j++) {
+        tmpsum = 0;
+        for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
+            tmpsum += abs(residues[j].at(i));
+        }
+        if (tmpsum < lowest_sum) {
+            lowest_sum = tmpsum;
+            lowest_index = j+1;
+        }
+    }
+
+    return lowest_index;
+
+}
+
+
+
+int blockSumComparison(vector<int> residues[], vector<int> orig, int blocksize, int blockindex) {
+    long long tmpsum = 0;
+    long long lowest_sum;
+    int lowest_index;
+    long maxsize = orig.size();
+    for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
+        tmpsum += abs(orig.at(i));
+    }
+    lowest_sum = tmpsum;
+    lowest_index = 0;
+
+    for(int j = 0; j < 3; j++) {
+        tmpsum = 0;
+        for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
+            tmpsum += abs(residues[j].at(i));
+        }
+        if (tmpsum < lowest_sum) {
+            lowest_sum = tmpsum;
+            lowest_index = j+1;
+        }
+    }
+
+    return lowest_index;
+
+}
+
+
+
+int blockSumComparison(vector<int> residues[], int blocksize, int blockindex) {
+    long long tmpsum = 0;
+    long long lowest_sum;
+    int lowest_index;
+    long maxsize = residues[0].size();
+    for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
+        tmpsum += abs(residues[0].at(i));
+    }
+    lowest_sum = tmpsum;
+    lowest_index = 0;
+
+    for(int j = 1; j < 4; j++) {
+        tmpsum = 0;
+        for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
+            tmpsum += abs(residues[j].at(i));
+        }
+        if (tmpsum < lowest_sum) {
+            lowest_sum = tmpsum;
+            lowest_index = j;
+        }
+    }
+
+    return lowest_index;
+
+}
+
+
+map<int, int> residueStats(vector<int> residues[], vector<short> orig, int blocksize) {
+    map<int, int> tmpmap;
+    int winner;
+    int total_blocks = (int) orig.size()/blocksize;
+    cout << "Total blocks: " << total_blocks << endl;
+    for(int i = 0; i <= total_blocks; i++) {
+
+        winner = blockSumComparison(residues, orig, blocksize, i);
+        if (tmpmap.count(winner) == 0) tmpmap[winner] = 0;
+        tmpmap[winner] = tmpmap[winner] + 1;
+        cout << "Block " << i << " done.\n";
+    }
+
+    return tmpmap;
+};
+
+map<int, int> residueStats(vector<int> residues[], int blocksize) {
+    map<int, int> tmpmap;
+    int winner;
+    int total_blocks = (int) residues[0].size()/blocksize;
+    cout << "Total blocks: " << total_blocks << endl;
+    for(int i = 0; i <= total_blocks; i++) {
+
+        winner = blockSumComparison(residues, blocksize, i);
+        if (tmpmap.count(winner) == 0) tmpmap[winner] = 0;
+        tmpmap[winner] = tmpmap[winner] + 1;
+        cout << "Block " << i << " done.\n";
+    }
+
+    return tmpmap;
+};
+
+map<int, int> residueStats(vector<int> residues[], vector<int> orig, int blocksize) {
+    map<int, int> tmpmap;
+    int winner;
+    int total_blocks = (int) orig.size()/blocksize;
+    cout << "Total blocks: " << total_blocks << endl;
+    for(int i = 0; i <= total_blocks; i++) {
+
+        winner = blockSumComparison(residues, orig, blocksize, i);
+        if (tmpmap.count(winner) == 0) tmpmap[winner] = 0;
+        tmpmap[winner] = tmpmap[winner] + 1;
+        cout << "Block " << i << " done.\n";
+    }
+
+    return tmpmap;
+};
+
+vector<int> residueComparison(vector<int> residues[], int blocksize, vector<int>& values) {
+    vector<int> lowest_indexes;
+    long maxsize = residues[0].size();
+    int winner, res;
+    for(int i = 0; i <= maxsize/blocksize; i++) {
+        winner = blockSumComparison(residues, blocksize, i);
+        lowest_indexes.push_back(winner);
+        for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
+            res = residues[winner].at(j);
+            values.push_back(res);
+        }
+    }
+    return lowest_indexes;
+};
+
+
+vector<int> residueComparison(vector<int> residues[], vector<short> orig, int blocksize, vector<int>& values) {
+    vector<int> lowest_indexes;
+    long maxsize = orig.size();
+    int winner;
+    for(int i = 0; i <= orig.size()/blocksize; i++) {
+        winner = blockSumComparison(residues, orig, blocksize, i);
+        lowest_indexes.push_back(winner);
+        for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
+            values.push_back(winner == 0 ? orig.at(j) : residues[winner - 1].at(j));
+        }
+    }
+    return lowest_indexes;
+};
+
+vector<int> residueComparison(vector<int> residues[], vector<int> orig, int blocksize, vector<int>& values) {
+    vector<int> lowest_indexes;
+    long maxsize = orig.size();
+    int winner;
+    for(int i = 0; i <= orig.size()/blocksize; i++) {
+        winner = blockSumComparison(residues, orig, blocksize, i);
+        lowest_indexes.push_back(winner);
+        for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
+            values.push_back(winner == 0 ? orig.at(j) : residues[winner - 1].at(j));
+        }
+    }
+    return lowest_indexes;
+};
+
+vector<int> sliceVector(vector<int>& input, int start, int end) {
+    vector<int> output;
+    int in;
+    while(start <= end) {
+        in = input.at(start++);
+        output.push_back(in);
+    }
+    return output;
+}
 
 int main(int argc, char **argv) {
     SndfileHandle soundFileIn;
@@ -557,7 +771,9 @@ int main(int argc, char **argv) {
     vector<short> vecL;
     vector<short> vecR;
     vector<short> vecALL;
-    vector<short> vecALLappend;
+    vector<int> vecALLappend;
+    vector<int> vecDelta;
+    vector<int> vecAVG;
     vector<int> residues[4];
 
 
@@ -607,9 +823,10 @@ int main(int argc, char **argv) {
 
         if(soundFileIn.channels() == 2) {
             if (sample[1] > max) max = sample[1];
+            int mid_index = (int) floor((sample[0] + sample[1])/2.0);
             //if (sndmapL.count(sample[1]) == 0) sndmapL[sample[1]] = 0;
             if (sndmapR.count(sample[1]) == 0) sndmapR[sample[1]] = 0;
-            if (sndmapAVG.count((sample[0]+sample[1])/2) == 0) sndmapAVG[(sample[0]+sample[1])/2] = 0;
+            if (sndmapAVG.count(mid_index) == 0) sndmapAVG[mid_index] = 0;
             if (sndmapALL.count(sample[1]) == 0) sndmapALL[sample[1]] = 0;
 
             sndmapR[sample[1]] = sndmapR[sample[1]] + 1;
@@ -617,7 +834,10 @@ int main(int argc, char **argv) {
 
             sndmapALL[sample[1]] = sndmapALL[sample[1]] + 1;
             vecALL.push_back(sample[1]);
-            sndmapAVG[(sample[0]+sample[1])/2] = sndmapAVG[(sample[0]+sample[1])/2] + 1;
+
+            sndmapAVG[mid_index] = sndmapAVG[mid_index] + 1;
+            vecAVG.push_back(mid_index);
+            vecDelta.push_back(sample[0] - sample[1]);
         }
 
 
@@ -634,7 +854,10 @@ int main(int argc, char **argv) {
 
     cerr << "Will now calculate entropy!\n";
     vecALLappend.insert(vecALLappend.end(), vecL.begin(), vecL.end());
-    vecALLappend.insert(vecALLappend.end(), vecR.begin(), vecR.end());
+    vecALLappend.insert(vecALLappend.end(), vecDelta.begin(), vecDelta.end());
+
+
+    //vecALLappend.insert(vecALLappend.end(), vecR.begin(), vecR.end());
 
     cout << "Original samples: ";
     for(int i = 0; i < 10; i++) cout << vecALLappend.at(i) << " ";
@@ -646,13 +869,26 @@ int main(int argc, char **argv) {
     short test = -1;
 
 
-    ae.calcEntropy(ae.mapFromVector(vecALLappend));
+    ae.calcEntropy(ae.mapFromIntVector(vecALLappend));
     calculateResidues(vecALLappend, residues);
+    int bs = 1024;
+    //map<int, int> comparison = residueStats(residues, bs);
+    //cerr << "Done calculating stats.\n";
+    vector<int> lowest_values;
+    vector<int> lowest_value_pointers = residueComparison(residues, bs, lowest_values);
+    //cout << "Predictor statistics: \n";
+    //for(int i = 0; i < 4; i++) {
+    //    if (comparison.count(i) == 0) continue;
+    //   cout << i << ": " << comparison.at(i) << endl;
+    //}
+    cout << "Entropy with lowest predictor values (" << lowest_values.size() << "): ";
+    ae.calcEntropy(ae.mapFromIntVector(lowest_values));
     int lowest = getResiduesWithLowestEntropy(residues, ae);
     //lowest = 0;
-    ae.drawHistogram(ae.reducedMapFromIntVector(residues[lowest]), "Residues");
+    ae.drawHistogram(ae.reducedMapFromIntVector(lowest_values), "Residues");
+    ae.drawHistogram(ae.reducedMapFromIntVector(vecALLappend), "Input");
 
-    ae.drawHistogram(sndmapL, "Histogram - L");
+    //ae.drawHistogram(sndmapL, "Histogram - L");
 
     //if(soundFileIn.channels() == 2) {
     //    ae.drawHistogram(sndmapR, "Histogram - R");
@@ -661,10 +897,10 @@ int main(int argc, char **argv) {
     //}
 
 
-    for(int i = 0; i < 10; i++) {
-        cout << residues[lowest].at(i) << " ";
-    }
-    cout << endl;
+    //for(int i = 0; i < 10; i++) {
+    //    cout << residues[lowest].at(i) << " ";
+    //}
+    //cout << endl;
 
     //vector<string> golomb_encoded = encodeGolomb(residues[lowest]);
     vector<string> fake_golomb_encoded;
@@ -673,13 +909,15 @@ int main(int argc, char **argv) {
     //    golomb_encoded = encodeGolomb(residues[lowest], (int) pow(2, i));
     //}
 
-    int best_m = findBestM(residues[lowest]);
+    //int best_m = findBestM(residues[0]);
+    int best_m = findBestM(lowest_values, bs);
+    cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
     fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     cout << "Writing encoded file to: " << argv[2] << endl;
     encodeGolombToFile(residues[lowest], best_m, argv[2]);
-    for(int i = 0; i < 10; i++) {
-        cout << fake_golomb_encoded.at(i) << endl;
-    }
+    //for(int i = 0; i < 10; i++) {
+    //    cout << fake_golomb_encoded.at(i) << endl;
+    //}
 
     vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
 
