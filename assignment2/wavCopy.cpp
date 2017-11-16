@@ -908,22 +908,24 @@ int main(int argc, char **argv) {
     //for(int i = 2; i < 20; i++) {
     //    golomb_encoded = encodeGolomb(residues[lowest], (int) pow(2, i));
     //}
+    long bestsize = 0;
 
-    //int best_m = findBestM(residues[0]);
+    int best_m = findBestM(lowest_values, bs, &bestsize);
     /*long bestsize = 0;
     long totalsize = 0;
     long int best_m, max_slice;
     vector<int> partition;
     for(int i = 0; i < lowest_values.size()/(bs*4); i++) {
         max_slice = (i+1)*(lowest_values.size()/(bs*4));
-        if (max >= lowest_values.size())  partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), lowest_values.size() - 1);
-        else partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), max - 1);
+        if (max_slice >= lowest_values.size())  partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), lowest_values.size() - 1);
+        else partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), max_slice - 1);
+        cout << "Slice: " << i*(lowest_values.size()/(bs*4)) << " to " << max_slice - 1 << endl;
         best_m = findBestM(partition, bs, &bestsize);
         totalsize += bestsize;
-    }*/
-    long bestsize;
-    int best_m = findBestM(lowest_values, bs, &bestsize);
-    cout << "Total size with " << 1/*lowest_values.size()/(bs*4)*/ << " partitions: " << bestsize/8 << endl;
+    }
+    //long bestsize;
+    //int best_m = findBestM(lowest_values, bs, &bestsize);
+    cout << "Total size with " << lowest_values.size()/(bs*4) << " partitions: " << totalsize/8 << endl;*/
 
     cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
     fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
