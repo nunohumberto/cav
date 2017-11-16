@@ -412,11 +412,11 @@ int getResiduesWithLowestEntropy(vector<int> residues[], AudioEntropy ae) {
     return lowest_entropy_index;
 }
 
-int findBestM(vector<int> input, int blocksize) {
+int findBestM(vector<int>& input, int blocksize, long *bestsize) {
     vector<int>::iterator it;
     int target;
-    long long totalnobits = -1;
-    long long last_total = LONG_LONG_MAX;
+    long totalnobits = -1;
+    long last_total = LONG_MAX;
     int exponent = 2;
     int q, m = -1, last_m;
     int predictor_overhead = 2;
@@ -444,7 +444,7 @@ int findBestM(vector<int> input, int blocksize) {
     }
 
     cout << "Found best value for M: " << last_m << endl;
-
+    *bestsize = last_total;
     return last_m;
 }
 
@@ -746,7 +746,7 @@ vector<int> residueComparison(vector<int> residues[], vector<int> orig, int bloc
     return lowest_indexes;
 };
 
-vector<int> sliceVector(vector<int>& input, int start, int end) {
+vector<int> sliceVector(vector<int>& input, long start, long end) {
     vector<int> output;
     int in;
     while(start <= end) {
@@ -910,7 +910,21 @@ int main(int argc, char **argv) {
     //}
 
     //int best_m = findBestM(residues[0]);
-    int best_m = findBestM(lowest_values, bs);
+    /*long bestsize = 0;
+    long totalsize = 0;
+    long int best_m, max_slice;
+    vector<int> partition;
+    for(int i = 0; i < lowest_values.size()/(bs*4); i++) {
+        max_slice = (i+1)*(lowest_values.size()/(bs*4));
+        if (max >= lowest_values.size())  partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), lowest_values.size() - 1);
+        else partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), max - 1);
+        best_m = findBestM(partition, bs, &bestsize);
+        totalsize += bestsize;
+    }*/
+    long bestsize;
+    int best_m = findBestM(lowest_values, bs, &bestsize);
+    cout << "Total size with " << 1/*lowest_values.size()/(bs*4)*/ << " partitions: " << bestsize/8 << endl;
+
     cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
     fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     cout << "Writing encoded file to: " << argv[2] << endl;
