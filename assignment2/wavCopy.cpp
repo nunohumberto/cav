@@ -15,12 +15,12 @@ class AudioEntropy{
 public:
     AudioEntropy();
     void drawHistogram(map<short,int>, string);
-    double calcEntropy(map<short,int>);
-    double calcEntropy(map<int,int>);
+    double calcEntropy(map<short,int>&);
+    double calcEntropy(map<int,int>&);
 
-    map<short, int> mapFromVector(vector<short>);
-    map<short, int> reducedMapFromIntVector(vector<int>);
-    map<int, int> mapFromIntVector(vector<int>);
+    map<short, int> mapFromVector(vector<short>&);
+    map<short, int> reducedMapFromIntVector(vector<int>&);
+    map<int, int> mapFromIntVector(vector<int>&);
 
 
 };
@@ -211,7 +211,7 @@ void AudioEntropy::drawHistogram(map<short,int> sndmap, string window_name) {
 
 }
 
-double AudioEntropy::calcEntropy(map<short,int> sndmap) {
+double AudioEntropy::calcEntropy(map<short,int>& sndmap) {
     map<short, int>::iterator it;
 
     double total = 0;
@@ -234,7 +234,7 @@ double AudioEntropy::calcEntropy(map<short,int> sndmap) {
 
 }
 
-double AudioEntropy::calcEntropy(map<int,int> sndmap) {
+double AudioEntropy::calcEntropy(map<int,int>& sndmap) {
     map<int, int>::iterator it;
 
     double total = 0;
@@ -259,7 +259,7 @@ double AudioEntropy::calcEntropy(map<int,int> sndmap) {
 
 
 
-map<short, int> AudioEntropy::mapFromVector(vector<short> vec) {
+map<short, int> AudioEntropy::mapFromVector(vector<short>& vec) {
     map<short, int> tmpmap;
     vector<short>::iterator it;
 
@@ -271,7 +271,7 @@ map<short, int> AudioEntropy::mapFromVector(vector<short> vec) {
 };
 
 
-map<short, int> AudioEntropy::reducedMapFromIntVector(vector<int> vec) {
+map<short, int> AudioEntropy::reducedMapFromIntVector(vector<int>& vec) {
     map<short, int> tmpmap;
     vector<int>::iterator it;
     short casted;
@@ -284,7 +284,7 @@ map<short, int> AudioEntropy::reducedMapFromIntVector(vector<int> vec) {
     return tmpmap;
 };
 
-map<int, int> AudioEntropy::mapFromIntVector(vector<int> vec) {
+map<int, int> AudioEntropy::mapFromIntVector(vector<int>& vec) {
     map<int, int> tmpmap;
     vector<int>::iterator it;
 
@@ -295,7 +295,7 @@ map<int, int> AudioEntropy::mapFromIntVector(vector<int> vec) {
     return tmpmap;
 };
 
-void calculateResidues(vector<short> input, vector<int> output[]) {
+void calculateResidues(vector<short>& input, vector<int> output[]) {
     int lastValues[4] = {0};
     int actualValues[5] = {0};
     int counter = 10;
@@ -322,7 +322,7 @@ void calculateResidues(vector<short> input, vector<int> output[]) {
 }
 
 
-void calculateResidues(vector<int> input, vector<int> output[]) {
+void calculateResidues(vector<int>& input, vector<int> output[]) {
     int lastValues[4] = {0};
     int actualValues[5] = {0};
     vector<int>::iterator it;
@@ -348,7 +348,7 @@ void calculateResidues(vector<int> input, vector<int> output[]) {
 }
 
 
-vector <short> decodeResidue(vector<int> input, int order) {
+vector <short> decodeResidue(vector<int>& input, int order) {
     vector<short> output;
     vector<int>::iterator it;
     short nextval;
@@ -399,9 +399,11 @@ int getResiduesWithLowestEntropy(vector<int> residues[], AudioEntropy ae) {
     double lowest = 0, temp_entropy;
     int lowest_entropy_index = -1;
     bool set = false;
+    map<int, int> m;
     for(int i = 0; i < 4; i++) {
         cout << "Order " << i+1 << ": ";
-        temp_entropy = ae.calcEntropy(ae.mapFromIntVector(residues[i]));
+        m = ae.mapFromIntVector(residues[i]);
+        temp_entropy = ae.calcEntropy(m);
         if (temp_entropy < lowest || set == false) {
             set = true;
             lowest_entropy_index = i;
@@ -439,17 +441,17 @@ int findBestM(vector<int>& input, int blocksize, long *bestsize) {
             if(i % blocksize == 0) totalnobits += predictor_overhead;
         }
 
-        cout << "Expected number of bytes (M=" << m << ") " << totalnobits/8 << endl;
+        //cout << "Expected number of bytes (M=" << m << ") " << totalnobits/8 << endl;
         exponent++;
     }
 
-    cout << "Found best value for M: " << last_m << endl;
+    //cout << "Found best value for M: " << last_m << endl;
     *bestsize = last_total;
     return last_m;
 }
 
 
-vector<string> encodeGolomb(vector<int> input, int m) {
+vector<string> encodeGolomb(vector<int>& input, int m) {
     vector<int>::iterator it;
     vector<string> output;
     int predictor_overhead = 2;
@@ -457,6 +459,7 @@ vector<string> encodeGolomb(vector<int> input, int m) {
     long totalnobits = 0;
     int q, r;
     int nobits = (int) log2(m);
+    int i = 0;
     for(it = input.begin(); it != input.end(); it++) {
         if(*it < 0) target = -(1 + *it * 2);
         else target = 2 * *it;
@@ -543,21 +546,31 @@ void writeToFile(int data, int length, char type, ofstream& file) {
         bitsinbuffer += length;
         flush(file);
     }
+    else if (type == 'p') {
+        buffer = (buffer << length) | (data & 0x03);
+        bitsinbuffer += 2;
+        flush(file);
+    }
     else if (type == 'f') {
         forceFlush(file);
     }
 }
 
-void encodeGolombToFile(vector<int> input, int m, string filename) {
+void encodeGolombToFile(vector<int>& input, vector<int>& predictors, int m, string filename, int bs) {
     vector<int>::iterator it;
     int target;
     int q, r;
     int nbits = (int) log2(m);
+    int i = 0;
     cout << "No bits per r: " << nbits << endl;
     ofstream outfile(filename, ios::out | ios::binary);
-    for(it = input.begin(); it != input.end(); it++) {
+    for(it = input.begin(); it != input.end(); it++, i++) {
         if(*it < 0) target = -(1 + *it * 2);
         else target = 2 * *it;
+        if ((i % bs) == 0) {
+            writeToFile(predictors.at(i/bs), 2, 'p', outfile);
+        }
+
 
         q = target/m;
         writeToFile(q, q, 'q', outfile);
@@ -756,6 +769,51 @@ vector<int> sliceVector(vector<int>& input, long start, long end) {
     return output;
 }
 
+vector<int> findBestPartitionNumber(vector<int>& input, int bs, long *estimatedsize_out, int *factor_out) {
+    long last_size = LONG_MAX;
+    long actual_size = -1;
+    int factor = 0;
+    long partition_size;
+    vector<int> partition;
+    vector<int> tmp_output;
+    vector<int> best_output;
+    int number_of_partitions;
+    long max_slice, best_m_size;
+    int best_m;;
+    while(actual_size < last_size) {
+        if(actual_size < last_size && actual_size != -1) {
+            best_output = tmp_output;
+            last_size = actual_size;
+        }
+
+        tmp_output.clear();
+        actual_size = 0;
+        factor++;
+        partition_size = (bs*factor);
+        number_of_partitions = (int) ceil((input.size()*1.0)/partition_size);
+
+
+        //cerr << "Attempting " << factor << endl;
+        for (int i = 0; i < number_of_partitions; i++) {
+            max_slice = (i + 1) * partition_size;
+            if (max_slice >= input.size())
+                partition = sliceVector(input, i * partition_size, input.size() - 1);
+            else partition = sliceVector(input, i * partition_size, max_slice - 1);
+            //cout << "Slice with index: " << i * partition_size << " to " << max_slice - 1 << endl;
+            best_m_size = 0;
+            best_m = findBestM(partition, bs, &best_m_size);
+            tmp_output.push_back(best_m);
+            actual_size += best_m_size;
+            //totalsamples += partition.size();
+        }
+
+    }
+    *factor_out = --factor;
+    *estimatedsize_out = last_size;
+    return best_output;
+
+}
+
 int main(int argc, char **argv) {
     SndfileHandle soundFileIn;
     SndfileHandle soundFileOut;
@@ -868,21 +926,24 @@ int main(int argc, char **argv) {
 
     short test = -1;
 
-
-    ae.calcEntropy(ae.mapFromIntVector(vecALLappend));
+    map<int, int> m = ae.mapFromIntVector(vecALLappend);
+    ae.calcEntropy(m);
     calculateResidues(vecALLappend, residues);
     int bs = 1024;
     //map<int, int> comparison = residueStats(residues, bs);
     //cerr << "Done calculating stats.\n";
     vector<int> lowest_values;
-    vector<int> lowest_value_pointers = residueComparison(residues, bs, lowest_values);
+    vector<int> lowest_value_predictors = residueComparison(residues, bs, lowest_values);
     //cout << "Predictor statistics: \n";
     //for(int i = 0; i < 4; i++) {
     //    if (comparison.count(i) == 0) continue;
     //   cout << i << ": " << comparison.at(i) << endl;
     //}
     cout << "Entropy with lowest predictor values (" << lowest_values.size() << "): ";
-    ae.calcEntropy(ae.mapFromIntVector(lowest_values));
+    cout << "Predictor number (" << lowest_value_predictors.size() << ")";
+
+    m = ae.mapFromIntVector(lowest_values);
+    ae.calcEntropy(m);
     int lowest = getResiduesWithLowestEntropy(residues, ae);
     //lowest = 0;
     ae.drawHistogram(ae.reducedMapFromIntVector(lowest_values), "Residues");
@@ -910,27 +971,62 @@ int main(int argc, char **argv) {
     //}
     long bestsize = 0;
 
-    int best_m = findBestM(lowest_values, bs, &bestsize);
-    /*long bestsize = 0;
+    //int best_m = findBestM(lowest_values, bs, &bestsize);
+    //long bestsize = 0;
     long totalsize = 0;
-    long int best_m, max_slice;
+    long max_slice;
+    int best_m;
     vector<int> partition;
-    for(int i = 0; i < lowest_values.size()/(bs*4); i++) {
+    /*partition = sliceVector(lowest_values, 0, lowest_values.size()/2);
+    best_m = findBestM(partition, bs, &bestsize);
+    totalsize += bestsize;
+    partition = sliceVector(lowest_values, lowest_values.size()/2, lowest_values.size()-1);
+    best_m = findBestM(partition, bs, &bestsize);
+    totalsize += bestsize;*/
+
+    /*for(int i = 0; i < lowest_values.size()/(bs*4); i++) {
         max_slice = (i+1)*(lowest_values.size()/(bs*4));
         if (max_slice >= lowest_values.size())  partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), lowest_values.size() - 1);
         else partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), max_slice - 1);
         cout << "Slice: " << i*(lowest_values.size()/(bs*4)) << " to " << max_slice - 1 << endl;
         best_m = findBestM(partition, bs, &bestsize);
         totalsize += bestsize;
+    }*/
+    long totalsamples = 0;
+    long partition_size = (bs*2);
+    int number_of_partitions = (int) ceil((lowest_values.size()*1.0)/partition_size);
+
+    for(int i = 0; i < number_of_partitions; i++) {
+        max_slice = (i + 1) * partition_size;
+        if (max_slice >= lowest_values.size())
+            partition = sliceVector(lowest_values, i * partition_size, lowest_values.size() - 1);
+        else partition = sliceVector(lowest_values, i * partition_size, max_slice - 1);
+        //cout << "Slice with index: " << i * partition_size << " to " << max_slice - 1 << endl;
+        bestsize = 0;
+        best_m = findBestM(partition, bs, &bestsize);
+        totalsize += bestsize;
+        totalsamples += partition.size();
     }
+
+
+
+
+
     //long bestsize;
     //int best_m = findBestM(lowest_values, bs, &bestsize);
-    cout << "Total size with " << lowest_values.size()/(bs*4) << " partitions: " << totalsize/8 << endl;*/
+    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize /*+ number_of_partitions*8*/)/8) << endl;
+    int fact = 0;
+    findBestPartitionNumber(lowest_values, bs, &totalsize, &fact);
+    partition_size = (bs*fact);
+    number_of_partitions = (int) ceil((lowest_values.size()*1.0)/partition_size);
+    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize /*+ number_of_partitions*8*/)/8) << endl;
+
+
 
     cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
     fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     cout << "Writing encoded file to: " << argv[2] << endl;
-    encodeGolombToFile(residues[lowest], best_m, argv[2]);
+    encodeGolombToFile(lowest_values, lowest_value_predictors, best_m, argv[2], bs);
     //for(int i = 0; i < 10; i++) {
     //    cout << fake_golomb_encoded.at(i) << endl;
     //}
