@@ -352,7 +352,7 @@ vector <short> decodeResidue(vector<int>& input, int order) {
     vector<short> output;
     vector<int>::iterator it;
     short nextval;
-    cout << "Using order: " << order << endl;
+    //cout << "Using order: " << order << endl;
     if (order == 1) {
         int last_val = 0;
         for(it = input.begin(); it != input.end(); it++) {
@@ -548,7 +548,12 @@ void writeToFile(int data, int length, char type, ofstream& file) {
     }
     else if (type == 'p') {
         buffer = (buffer << length) | (data & 0x03);
-        bitsinbuffer += 2;
+        bitsinbuffer += length;
+        flush(file);
+    }
+    else if (type == 'm') {
+        buffer = (buffer << length) | (data & 0xFF);
+        bitsinbuffer += length;
         flush(file);
     }
     else if (type == 'f') {
@@ -556,35 +561,48 @@ void writeToFile(int data, int length, char type, ofstream& file) {
     }
 }
 
-void encodeGolombToFile(vector<int>& input, vector<int>& predictors, int m, string filename, int bs) {
+void encodeGolombToFile(vector<int>& input, vector<int>& predictors, vector<int>& m_vector, ofstream& outfile, int bs, int factor) {
     vector<int>::iterator it;
     int target;
     int q, r;
-    int nbits = (int) log2(m);
-    int i = 0;
-    cout << "No bits per r: " << nbits << endl;
-    ofstream outfile(filename, ios::out | ios::binary);
+    int nbits;// = (int) log2(m);
+    int m;
+    //long estsize = 0;
+    int i = 0, blockcounter = 0, partition_index = 0;
     for(it = input.begin(); it != input.end(); it++, i++) {
         if(*it < 0) target = -(1 + *it * 2);
         else target = 2 * *it;
         if ((i % bs) == 0) {
+            if((blockcounter % factor) == 0) {
+                m = m_vector.at(partition_index++);
+                nbits = (int) log2(m);
+
+                writeToFile(nbits, 8, 'm', outfile);
+                //estsize += 8;
+            }
+            blockcounter++;
+
             writeToFile(predictors.at(i/bs), 2, 'p', outfile);
+            //estsize += 2;
         }
 
 
         q = target/m;
         writeToFile(q, q, 'q', outfile);
+        //estsize += (q+1);
 
         r = target - q * m;
         writeToFile(r, nbits, 'r', outfile);
+        //estsize += nbits;
     }
 
     writeToFile(0, 0, 'f', outfile);
-
+    //cout << "Wrote a total of " << partition_index << " partitions.\n";
+    //cout << "Estimated size: " << estsize/8 << endl;
 }
 
 
-int blockSumComparison(vector<int> residues[], vector<short> orig, int blocksize, int blockindex) {
+int blockSumComparison(vector<int> residues[], vector<short>& orig, int blocksize, int blockindex) {
     long long tmpsum = 0;
     long long lowest_sum;
     int lowest_index;
@@ -612,7 +630,7 @@ int blockSumComparison(vector<int> residues[], vector<short> orig, int blocksize
 
 
 
-int blockSumComparison(vector<int> residues[], vector<int> orig, int blocksize, int blockindex) {
+int blockSumComparison(vector<int> residues[], vector<int>& orig, int blocksize, int blockindex) {
     long long tmpsum = 0;
     long long lowest_sum;
     int lowest_index;
@@ -745,11 +763,12 @@ vector<int> residueComparison(vector<int> residues[], vector<short> orig, int bl
     return lowest_indexes;
 };
 
-vector<int> residueComparison(vector<int> residues[], vector<int> orig, int blocksize, vector<int>& values) {
+vector<int> residueComparison(vector<int> residues[], vector<int>& orig, int blocksize, vector<int>& values) {
     vector<int> lowest_indexes;
     long maxsize = orig.size();
     int winner;
     for(int i = 0; i <= orig.size()/blocksize; i++) {
+        cout << "Processing block " << i << "/" << orig.size()/blocksize << endl;
         winner = blockSumComparison(residues, orig, blocksize, i);
         lowest_indexes.push_back(winner);
         for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
@@ -793,7 +812,6 @@ vector<int> findBestPartitionNumber(vector<int>& input, int bs, long *estimateds
         number_of_partitions = (int) ceil((input.size()*1.0)/partition_size);
 
 
-        //cerr << "Attempting " << factor << endl;
         for (int i = 0; i < number_of_partitions; i++) {
             max_slice = (i + 1) * partition_size;
             if (max_slice >= input.size())
@@ -806,7 +824,8 @@ vector<int> findBestPartitionNumber(vector<int>& input, int bs, long *estimateds
             actual_size += best_m_size;
             //totalsamples += partition.size();
         }
-
+        actual_size += (number_of_partitions * 8);
+        cerr << "Attempting " << factor << ": " << actual_size/8 << endl;
     }
     *factor_out = --factor;
     *estimatedsize_out = last_size;
@@ -929,22 +948,24 @@ int main(int argc, char **argv) {
     map<int, int> m = ae.mapFromIntVector(vecALLappend);
     ae.calcEntropy(m);
     calculateResidues(vecALLappend, residues);
-    int bs = 1024;
+    int bs = 512;
     //map<int, int> comparison = residueStats(residues, bs);
     //cerr << "Done calculating stats.\n";
     vector<int> lowest_values;
     vector<int> lowest_value_predictors = residueComparison(residues, bs, lowest_values);
+    //vector<int> lowest_value_predictors = residueComparison(residues, vecALLappend, bs, lowest_values);
+
     //cout << "Predictor statistics: \n";
     //for(int i = 0; i < 4; i++) {
     //    if (comparison.count(i) == 0) continue;
     //   cout << i << ": " << comparison.at(i) << endl;
     //}
-    cout << "Entropy with lowest predictor values (" << lowest_values.size() << "): ";
-    cout << "Predictor number (" << lowest_value_predictors.size() << ")";
 
+    cout << "Predictor number (" << lowest_value_predictors.size() << ")" << endl;
+    cout << "Entropy with lowest predictor values (" << lowest_values.size() << "): ";
     m = ae.mapFromIntVector(lowest_values);
     ae.calcEntropy(m);
-    int lowest = getResiduesWithLowestEntropy(residues, ae);
+    //int lowest = getResiduesWithLowestEntropy(residues, ae); UNCOMMENT FOR REPORT
     //lowest = 0;
     ae.drawHistogram(ae.reducedMapFromIntVector(lowest_values), "Residues");
     ae.drawHistogram(ae.reducedMapFromIntVector(vecALLappend), "Input");
@@ -1014,33 +1035,41 @@ int main(int argc, char **argv) {
 
     //long bestsize;
     //int best_m = findBestM(lowest_values, bs, &bestsize);
-    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize /*+ number_of_partitions*8*/)/8) << endl;
+    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize + number_of_partitions*8)/8) << endl;
     int fact = 0;
-    findBestPartitionNumber(lowest_values, bs, &totalsize, &fact);
+    vector<int> m_values = findBestPartitionNumber(lowest_values, bs, &totalsize, &fact);
     partition_size = (bs*fact);
     number_of_partitions = (int) ceil((lowest_values.size()*1.0)/partition_size);
-    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize /*+ number_of_partitions*8*/)/8) << endl;
+    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << totalsize/8 << endl;
 
 
 
-    cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
-    fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
+    //cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
+    //fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     cout << "Writing encoded file to: " << argv[2] << endl;
-    encodeGolombToFile(lowest_values, lowest_value_predictors, best_m, argv[2], bs);
+    ofstream outfile(argv[2], ios::out | ios::binary);
+    encodeGolombToFile(lowest_values, lowest_value_predictors, m_values, outfile, bs, fact);
+    outfile.close();
     //for(int i = 0; i < 10; i++) {
     //    cout << fake_golomb_encoded.at(i) << endl;
     //}
 
-    vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
+    //vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
+    buffer = 0;
+    bitsinbuffer = 0;
+    //ofstream infile(argv[2], ios::in | ios::binary);
+
+    //vector<int> outLEFT;
+    //vector<int> outDELTA;
 
 
 
-    cout << "Decoded samples: ";
+    /*cout << "Decoded samples: ";
     for(int i = 0; i < 10; i++) cout << decoded.at(i) << " ";
 
     cout << " last: ";
     cout << decoded.at(decoded.size()-1) << " ";
-    cout << endl;
+    cout << endl;*/
 
     cvWaitKey(0);
 
