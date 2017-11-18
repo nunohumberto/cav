@@ -14,7 +14,7 @@ using namespace std;
 class AudioEntropy{
 public:
     AudioEntropy();
-    void drawHistogram(map<short,int>, string);
+    void drawHistogram(map<short,int>&, string);
     double calcEntropy(map<short,int>&);
     double calcEntropy(map<int,int>&);
 
@@ -30,8 +30,9 @@ AudioEntropy::AudioEntropy() {
 }
 
 
+int GLOBAL_MIN = 26100;
 
-void AudioEntropy::drawHistogram(map<short,int> sndmap, string window_name) {
+void AudioEntropy::drawHistogram(map<short,int>& sndmap, string window_name) {
 
     int histsize = 256*256;
     int total = 0;
@@ -347,6 +348,31 @@ void calculateResidues(vector<int>& input, vector<int> output[]) {
     //cout << endl;
 }
 
+int decodeSingleResidue(int input, int winner, int last_vals[], bool debug) {
+    int nextval;
+    int order = winner + 1;
+    //cout << "Using order: " << order << endl;
+    if (order == 1) {
+        nextval = (input + last_vals[0]);
+    }
+    else if (order == 2) {
+        nextval = (input + 2 * last_vals[0] - last_vals[1]);
+    }
+    else if (order == 3) {
+        nextval = (input + 3 * last_vals[0] - 3 * last_vals[1] + last_vals[2]);
+    }
+    else if (order == 4) {
+        nextval = (input + 4 * last_vals[0] - 6 * last_vals[1] + 4 * last_vals[2] - last_vals[3]);
+
+    }
+    /*if(debug) cout << "Order was " << order << ", input " << input << " lastvals: [" << last_vals[0] << " " << last_vals[1]
+                   << " "<< last_vals[2] << " "<< last_vals[3] << "] result: " << nextval
+                   << " alternatives: " << (input + last_vals[0]) << " " << (input + 2 * last_vals[1] - last_vals[0])
+                   << " " << (input + 3 * last_vals[2] - 3 * last_vals[1] + last_vals[0]) << " "
+                   << " " << (input + 4 * last_vals[3] - 6 * last_vals[2] + 4 * last_vals[1] - last_vals[0])
+                   << endl;*/
+    return nextval;
+}
 
 vector <short> decodeResidue(vector<int>& input, int order) {
     vector<short> output;
@@ -567,19 +593,27 @@ void encodeGolombToFile(vector<int>& input, vector<int>& predictors, vector<int>
     int q, r;
     int nbits;// = (int) log2(m);
     int m;
+    int counter = 100;
     //long estsize = 0;
+    //cout << "R values: ";
     int i = 0, blockcounter = 0, partition_index = 0;
     for(it = input.begin(); it != input.end(); it++, i++) {
+
         if(*it < 0) target = -(1 + *it * 2);
         else target = 2 * *it;
+        //if(counter-- > 0) cout << *it << " ";
         if ((i % bs) == 0) {
             if((blockcounter % factor) == 0) {
+
                 m = m_vector.at(partition_index++);
+
                 nbits = (int) log2(m);
+
 
                 writeToFile(nbits, 8, 'm', outfile);
                 //estsize += 8;
             }
+
             blockcounter++;
 
             writeToFile(predictors.at(i/bs), 2, 'p', outfile);
@@ -587,14 +621,21 @@ void encodeGolombToFile(vector<int>& input, vector<int>& predictors, vector<int>
         }
 
 
+
         q = target/m;
+
         writeToFile(q, q, 'q', outfile);
         //estsize += (q+1);
 
         r = target - q * m;
+
+        //if(blockcounter == 52) cout << predictors.at(i/bs) << " ";
+
         writeToFile(r, nbits, 'r', outfile);
+
         //estsize += nbits;
     }
+    //cout << endl;
 
     writeToFile(0, 0, 'f', outfile);
     //cout << "Wrote a total of " << partition_index << " partitions.\n";
@@ -737,14 +778,17 @@ vector<int> residueComparison(vector<int> residues[], int blocksize, vector<int>
     vector<int> lowest_indexes;
     long maxsize = residues[0].size();
     int winner, res;
+    //cout << "Comparing residues: ";
     for(int i = 0; i <= maxsize/blocksize; i++) {
         winner = blockSumComparison(residues, blocksize, i);
         lowest_indexes.push_back(winner);
         for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
             res = residues[winner].at(j);
+            //if (i == 51) cout << res << " ";
             values.push_back(res);
         }
     }
+    //cout << endl;
     return lowest_indexes;
 };
 
@@ -830,6 +874,158 @@ vector<int> findBestPartitionNumber(vector<int>& input, int bs, long *estimateds
     *factor_out = --factor;
     *estimatedsize_out = last_size;
     return best_output;
+
+}
+
+void writeHeader(ofstream& outfile, long samples, int bs, int channels, int fact) {
+    outfile.write((char*)&samples, sizeof(long));
+    outfile.write((char*)&bs, sizeof(int));
+    char ch = (char) (channels & 0xFF);
+    outfile.write(&ch, sizeof(char));
+    ch = (char) (fact & 0xFF);
+    outfile.write(&ch, sizeof(char));
+}
+
+void readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact) {
+    infile.read((char*)samples, sizeof(long));
+    infile.read((char*)bs, sizeof(int));
+    char tmp;
+    infile.read(&tmp, sizeof(char));
+    *channels = (int) tmp;
+    infile.read(&tmp, sizeof(char));
+    *fact = (int) tmp;
+}
+
+void replenish(ifstream& infile) {
+    char tmp;
+    infile.read(&tmp, sizeof(char));
+    buffer = (buffer << 8) | (tmp & 0xFF);
+    bitsinbuffer += 8;
+}
+
+char readNextByte(ifstream& infile) {
+    if (bitsinbuffer < 8) replenish(infile);
+    char val = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
+    bitsinbuffer -= 8;
+    buffer = buffer & buildOnes(bitsinbuffer);
+    return val;
+}
+
+int readNextPredictor(ifstream& infile) {
+    if (bitsinbuffer < 2) replenish(infile);
+    int val = (buffer >> (bitsinbuffer - 2)) & 0x03;
+    bitsinbuffer -= 2;
+    buffer = buffer & buildOnes(bitsinbuffer);
+    return val;
+}
+
+int readNextQ(ifstream& infile) {
+    bool decided = false;
+    int counter = 0, bitval;
+    while(!decided) {
+        if (bitsinbuffer < 1) replenish(infile);
+        bitval = ((buffer >> (bitsinbuffer - 1)) & 1);
+        bitsinbuffer--;
+        buffer = buffer & buildOnes(bitsinbuffer);
+        if(bitval == 1) counter++;
+        else decided = true;
+    }
+    return counter;
+}
+
+
+int readNextR(ifstream& infile, int nobits) {
+    while (bitsinbuffer < nobits) replenish(infile);
+    unsigned int val = (buffer >> (bitsinbuffer - nobits)) & buildOnes(nobits);
+    bitsinbuffer -= nobits;
+    buffer = buffer & buildOnes(bitsinbuffer);
+    return val;
+}
+
+
+
+vector<int> decodeGolombFromFile(ifstream& input, long total_samples, int bs, int factor) {
+    vector<int> output;
+    int blockcounter = 0;
+    int m, nbits, predictor, q, r, original;
+    int value;
+    int lastvals[4] = {0};
+    int counter = 100;
+    //cout << "R values: ";
+    for(long readsamples = 0; readsamples < total_samples; readsamples++) {
+        if ((readsamples % bs) == 0) {
+            if ((blockcounter % factor) == 0) {
+                nbits = (int) readNextByte(input);
+
+                m = pow(2, nbits);
+            }
+            predictor = readNextPredictor(input);
+            blockcounter++;
+        }
+        q = readNextQ(input);
+
+        r = readNextR(input, nbits);
+
+        value = m*q + r;
+
+
+
+        if((value % 2) == 0) value /= 2;
+        else value = -((value+1)/2);
+
+
+        //if(blockcounter == 52) cout << predictor << " ";
+
+
+        original = decodeSingleResidue(value, predictor, lastvals, blockcounter == 52);
+        lastvals[3] = lastvals[2];
+        lastvals[2] = lastvals[1];
+        lastvals[1] = lastvals[0];
+        lastvals[0] = original;
+
+
+
+        output.push_back(original);
+    }
+    cout << endl;
+    return output;
+}
+
+void decodeToWav(ifstream& input, vector<short>& outLEFT, vector<int>& outDELTA) {
+    buffer = 0;
+    bitsinbuffer = 0;
+    long total_samples;
+    int bs, channels, fact;
+    readHeader(input, &total_samples, &bs, &channels, &fact);
+    cout << "Header:\nSamples: " << total_samples << "\nBlock size: " << bs << "\nChannels: " << channels << "\nPartition factor: " << fact << endl;
+    vector<int> original_input = decodeGolombFromFile(input, total_samples, bs, fact);
+    int value;
+    for(int i = 0; i < original_input.size(); i++) {
+        value = (short) original_input.at(i);
+        if (i < original_input.size() / 2) outLEFT.push_back((short) value);
+        else outDELTA.push_back(value);
+
+    }
+    cout << "Done.\n";
+    //cout << "\n\nDecoded: ";
+    //for(int i = GLOBAL_MIN; i < GLOBAL_MIN+100; i++) cout << original_input.at(i) << " ";
+    //cout << endl;
+    //cout << "\nsize: " << original_input.size() << endl;
+    //for(int i = 0; i < 10; i++) cout << "Last: " << original_input.at(original_input.size()-(1 + i)) << " ";
+    //cout << endl;
+
+}
+
+void writeWavToFile(string filename, vector<short>& left, vector<int>& delta) {
+    short *sample = new short[2];
+    SndfileHandle soundFileOut = SndfileHandle(filename, SFM_WRITE, SF_FORMAT_WAV | SF_FORMAT_PCM_16, 2, 44100);
+    cout << "Writing decoded file to: " << filename << endl;
+    for(int i = 0; i < left.size(); i++) {
+        //cout << i;
+        sample[0] = left.at(i);
+        sample[1] = (short) (left.at(i) - delta.at(i));
+        soundFileOut.write(sample, 2);
+    }
 
 }
 
@@ -936,12 +1132,15 @@ int main(int argc, char **argv) {
 
     //vecALLappend.insert(vecALLappend.end(), vecR.begin(), vecR.end());
 
-    cout << "Original samples: ";
-    for(int i = 0; i < 10; i++) cout << vecALLappend.at(i) << " ";
+    //cout << "Original samples: ";
+    //for(int i = GLOBAL_MIN; i < GLOBAL_MIN+100; i++) cout << vecALLappend.at(i) << " ";
 
-    cout << " last: ";
-    cout << vecALLappend.at(vecALLappend.size()-1) << " ";
-    cout << endl;
+    //cout << " last: ";
+    //cout << vecALLappend.at(vecALLappend.size()-1) << " ";
+    //cout << "\nsize: " << vecALLappend.size() << endl;
+
+    //for(int i = 0; i < 10; i++) cout << "Last: " << vecALLappend.at(vecALLappend.size()-(1 + i)) << " ";
+    //cout << endl;
 
     short test = -1;
 
@@ -954,6 +1153,11 @@ int main(int argc, char **argv) {
     vector<int> lowest_values;
     vector<int> lowest_value_predictors = residueComparison(residues, bs, lowest_values);
     //vector<int> lowest_value_predictors = residueComparison(residues, vecALLappend, bs, lowest_values);
+    /*cout << "Lowest: ";
+    for(int i = 0; i < 10; i++) {
+       cout << lowest_values.at(i) << " ";
+    }
+    cout << endl;*/
 
     //cout << "Predictor statistics: \n";
     //for(int i = 0; i < 4; i++) {
@@ -961,14 +1165,19 @@ int main(int argc, char **argv) {
     //   cout << i << ": " << comparison.at(i) << endl;
     //}
 
-    cout << "Predictor number (" << lowest_value_predictors.size() << ")" << endl;
-    cout << "Entropy with lowest predictor values (" << lowest_values.size() << "): ";
+    //cout << "Predictor number (" << lowest_value_predictors.size() << ")" << endl;
+    cout << "Entropy with lowest predictor values: ";
     m = ae.mapFromIntVector(lowest_values);
     ae.calcEntropy(m);
     //int lowest = getResiduesWithLowestEntropy(residues, ae); UNCOMMENT FOR REPORT
     //lowest = 0;
-    ae.drawHistogram(ae.reducedMapFromIntVector(lowest_values), "Residues");
-    ae.drawHistogram(ae.reducedMapFromIntVector(vecALLappend), "Input");
+
+    map<short, int> res = ae.reducedMapFromIntVector(lowest_values);
+    map<short, int> inp = ae.reducedMapFromIntVector(vecALLappend);
+    ae.drawHistogram(res, "Residues");
+    ae.drawHistogram(inp, "Input");
+    res.clear();
+    inp.clear();
 
     //ae.drawHistogram(sndmapL, "Histogram - L");
 
@@ -1017,7 +1226,7 @@ int main(int argc, char **argv) {
     long partition_size = (bs*2);
     int number_of_partitions = (int) ceil((lowest_values.size()*1.0)/partition_size);
 
-    for(int i = 0; i < number_of_partitions; i++) {
+    /*for(int i = 0; i < number_of_partitions; i++) {
         max_slice = (i + 1) * partition_size;
         if (max_slice >= lowest_values.size())
             partition = sliceVector(lowest_values, i * partition_size, lowest_values.size() - 1);
@@ -1027,7 +1236,7 @@ int main(int argc, char **argv) {
         best_m = findBestM(partition, bs, &bestsize);
         totalsize += bestsize;
         totalsamples += partition.size();
-    }
+    }*/
 
 
 
@@ -1035,12 +1244,12 @@ int main(int argc, char **argv) {
 
     //long bestsize;
     //int best_m = findBestM(lowest_values, bs, &bestsize);
-    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize + number_of_partitions*8)/8) << endl;
+    //cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << ((totalsize + number_of_partitions*8)/8) << endl;
     int fact = 0;
     vector<int> m_values = findBestPartitionNumber(lowest_values, bs, &totalsize, &fact);
     partition_size = (bs*fact);
     number_of_partitions = (int) ceil((lowest_values.size()*1.0)/partition_size);
-    cout << "Total size with " << totalsamples << " samples and " << number_of_partitions << " partitions: " << totalsize/8 << endl;
+    cout << "Total size with " << lowest_values.size() << " samples and " << number_of_partitions << " partitions: " << totalsize/8 << endl;
 
 
 
@@ -1048,6 +1257,9 @@ int main(int argc, char **argv) {
     //fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     cout << "Writing encoded file to: " << argv[2] << endl;
     ofstream outfile(argv[2], ios::out | ios::binary);
+
+    writeHeader(outfile, lowest_values.size(), bs, channels, fact);
+
     encodeGolombToFile(lowest_values, lowest_value_predictors, m_values, outfile, bs, fact);
     outfile.close();
     //for(int i = 0; i < 10; i++) {
@@ -1055,15 +1267,19 @@ int main(int argc, char **argv) {
     //}
 
     //vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
-    buffer = 0;
-    bitsinbuffer = 0;
-    //ofstream infile(argv[2], ios::in | ios::binary);
 
-    //vector<int> outLEFT;
-    //vector<int> outDELTA;
+    ifstream infile(argv[2], ios::in | ios::binary);
 
+    vector<short> outLEFT;
+    vector<int> outDELTA;
 
 
+    cout << "Decoding " << argv[2] << "...\n";
+    decodeToWav(infile, outLEFT, outDELTA);
+
+    writeWavToFile(argv[3], outLEFT, outDELTA);
+
+    cout << "Done.\n";
     /*cout << "Decoded samples: ";
     for(int i = 0; i < 10; i++) cout << decoded.at(i) << " ";
 
