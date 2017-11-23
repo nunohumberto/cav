@@ -15,14 +15,20 @@ using namespace std;
 
 
 class AudioEntropy {
+private:
+    double delta;
 public:
     void drawHistogram(map<short,int>&, string);
     double calcEntropy(map<short,int>&);
     double calcEntropy(map<int,int>&);
+    double calcEntropy(int* arr);
+    short quantize(short input);
+    void setupQuantizer(int divisions);
 
     map<short, int> mapFromVector(vector<short>&);
     map<short, int> reducedMapFromIntVector(vector<int>&);
     map<int, int> mapFromIntVector(vector<int>&);
+    void arrFromIntVector(vector<int>&, int* arr);
 
 };
 

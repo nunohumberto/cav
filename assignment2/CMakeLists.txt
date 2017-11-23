@@ -6,7 +6,7 @@ project(assignment2)
 set(CMAKE_CXX_STANDARD 11)
 
 set(SOURCE_FILES
-        wavCopy.cpp)
+        Codec.cpp)
 
 
 include_directories(/usr/local/include)

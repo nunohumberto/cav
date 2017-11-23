@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
             ("d,decode", "Specifies a decode operation", cxxopts::value<std::string>(), "<output file>")
             ("e,encode", "Specifies an encode operation", cxxopts::value<std::string>(), "<output file>")
             ("draw", "Draws histograms")
-            ("l,lossy", "Applies lossy compression/decompression")
+            ("l,lossy", "Applies lossy compression", cxxopts::value<int>(), "<symbol space divisions>")
             ("f,fake", "Generates/decodes textual files")
             ("help", "Prints help");
 
@@ -48,6 +48,15 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+
+    AudioEntropy ae;
+    bool lossy = result.count("lossy") != 0;
+    int lossy_factor = 0;
+    if (lossy) {
+        lossy_factor = result["lossy"].as<int>();
+        ae.setupQuantizer(lossy_factor);
+    }
+
     if (result.count("decode") && result.count("input"))
     {
         chrono::milliseconds before = chrono::duration_cast< chrono::milliseconds >(chrono::system_clock::now().time_since_epoch());
@@ -62,19 +71,19 @@ int main(int argc, char **argv) {
         if(result.count("fake")) {
             FakeAudioCodec codec;
             channels = codec.fakeDecodeToWav(infile, outLEFT, outDELTA);
-            if(result.count("lossy")) {
-                outLEFT = codec.lossyRecover(outLEFT);
-                outDELTA = codec.lossyRecover(outDELTA);
-            }
+            //if(result.count("lossy")) {
+            //    outLEFT = codec.lossyRecover(outLEFT);
+            //    outDELTA = codec.lossyRecover(outDELTA);
+            //}
             codec.writeWavToFile(result["decode"].as<string>(), outLEFT, outDELTA, channels);
         }
         else {
             RealAudioCodec codec;
             channels = codec.decodeToWav(infile, outLEFT, outDELTA);
-            if(result.count("lossy")) {
-                outLEFT = codec.lossyRecover(outLEFT);
-                outDELTA = codec.lossyRecover(outDELTA);
-            }
+            //if(result.count("lossy")) {
+            //    outLEFT = codec.lossyRecover(outLEFT);
+            //    outDELTA = codec.lossyRecover(outDELTA);
+            //}
             codec.writeWavToFile(result["decode"].as<string>(), outLEFT, outDELTA, channels);
         }
 
@@ -114,10 +123,10 @@ int main(int argc, char **argv) {
     vector<int> vecALLappend;
     vector<int> vecDelta;
     vector<int> vecAVG;
-    vector<int> residues[4];
+    vector<int> residual[4];
 
 
-    AudioEntropy ae;
+
     Common common;
     string input_file = result["input"].as<string>();
 
@@ -134,25 +143,26 @@ int main(int argc, char **argv) {
     int srate = soundFileIn.samplerate();
 
     for (i = 0; i < soundFileIn.frames(); i++) {
-        //if (soundFileIn.read(sample, soundFileIn.channels()) == 0) {
-        //    fprintf(stderr, "Error: Reached end of file %d\n", i);
-        //    break;
-        if(channels == 1) sample[0] = buff[i];
-        else {
-            sample[0] = buff[2*i];
-            sample[1] = buff[2*i + 1];
+        if (!lossy) {
+            if(channels == 1) sample[0] = buff[i];
+            else {
+                sample[0] = buff[2*i];
+                sample[1] = buff[2*i + 1];
+            }
+        } else {
+            if(channels == 1) sample[0] = ae.quantize(buff[i]);
+            else {
+                sample[0] = ae.quantize(buff[2*i]);
+                sample[1] = ae.quantize(buff[2*i + 1]);
+            }
         }
 
-        if(result.count("lossy") && (i % 2 != 0)) continue;
 
-
-
-
-        if (sndmapL.count(sample[0]) == 0) sndmapL[sample[0]] = 0;
-        if (draw) if (sndmapALL.count(sample[0]) == 0) sndmapALL[sample[0]] = 0;
-
-
-        sndmapL[sample[0]] = sndmapL[sample[0]] + 1;
+        if(draw) {
+            if (sndmapL.count(sample[0]) == 0) sndmapL[sample[0]] = 0;
+            if (sndmapALL.count(sample[0]) == 0) sndmapALL[sample[0]] = 0;
+            sndmapL[sample[0]] = sndmapL[sample[0]] + 1;
+        }
         vecL.push_back(sample[0]);
 
 
@@ -186,13 +196,6 @@ int main(int argc, char **argv) {
         }
 
 
-
-
-
-        /*if (soundFileOut.write(sample, nSamples) != 2) {
-            fprintf(stderr, "Error writing frames to the output:\n");
-            return -1;
-        }*/
     }
     delete[] buff;
     vecALLappend.insert(vecALLappend.end(), vecL.begin(), vecL.end());
@@ -204,33 +207,23 @@ int main(int argc, char **argv) {
     vecALL.clear();
 
 
-
-    //vecALLappend.insert(vecALLappend.end(), vecR.begin(), vecR.end());
-
-    //cout << "Original samples: ";
-    //for(int i = GLOBAL_MIN; i < GLOBAL_MIN+100; i++) cout << vecALLappend.at(i) << " ";
-
-    //cout << " last: ";
-    //cout << vecALLappend.at(vecALLappend.size()-1) << " ";
-    //cout << "\nsize: " << vecALLappend.size() << endl;
-
-    //for(int i = 0; i < 10; i++) cout << "Last: " << vecALLappend.at(vecALLappend.size()-(1 + i)) << " ";
-    //cout << endl;
-
     short test = -1;
 
-    map<int, int> m = ae.mapFromIntVector(vecALLappend);
+    int *counts = (int*) calloc(2*SHRT_MAX - 2*SHRT_MIN, sizeof(int));
+    ae.arrFromIntVector(vecALLappend, counts);
+    double entropy = ae.calcEntropy(counts);
+    delete counts;
 
-    double entropy = ae.calcEntropy(m);
     cout << "Input entropy: " << entropy << endl;
-    cout << "(Stage \033[1;34m2\033[0m/\033[1;31m" << total_stages << "\033[0m) Calculating residues..." << endl;
-    common.calculateResidues(vecALLappend, residues);
+    cout << "(Stage \033[1;34m2\033[0m/\033[1;31m" << total_stages << "\033[0m) Calculating residuals..." << endl;
+    common.calculateResiduals(vecALLappend, residual);
     int bs = 512;
-    //map<int, int> comparison = residueStats(residues, bs);
+    //map<int, int> comparison = residualStats(residual, bs);
     //cerr << "Done calculating stats.\n";
     vector<int> lowest_values;
-    vector<int> lowest_value_predictors = common.residueComparison(residues, bs, lowest_values);
-    //vector<int> lowest_value_predictors = residueComparison(residues, vecALLappend, bs, lowest_values);
+    vector<int> lowest_value_predictors = common.residualComparison(residual, bs, lowest_values);
+
+    //vector<int> lowest_value_predictors = residualComparison(residual, vecALLappend, bs, lowest_values);
     /*cout << "Lowest: ";
     for(int i = 0; i < 10; i++) {
        cout << lowest_values.at(i) << " ";
@@ -243,11 +236,15 @@ int main(int argc, char **argv) {
     //   cout << i << ": " << comparison.at(i) << endl;
     //}
 
-    //cout << "Predictor number (" << lowest_value_predictors.size() << ")" << endl;
 
-    m = ae.mapFromIntVector(lowest_values);
-    cout << "Residue entropy: " << ae.calcEntropy(m) << endl;
-    //int lowest = getResiduesWithLowestEntropy(residues, ae); UNCOMMENT FOR REPORT
+
+    counts = (int*) calloc(2*SHRT_MAX - 2*SHRT_MIN, sizeof(int));
+    //m = ae.mapFromIntVector(lowest_values);
+    ae.arrFromIntVector(lowest_values, counts);
+    //cout << "Residuals entropy: " << ae.calcEntropy(m) << endl;
+    cout << "Residuals entropy: " << ae.calcEntropy(counts) << endl;
+    delete counts;
+    //int lowest = getResiduesWithLowestEntropy(residual, ae); UNCOMMENT FOR REPORT
     //lowest = 0;
 
     if(draw) {
@@ -266,49 +263,15 @@ int main(int argc, char **argv) {
         }
     }
 
-    //ae.drawHistogram(sndmapL, "Histogram - L");
-
-    //if(soundFileIn.channels() == 2) {
-    //    ae.drawHistogram(sndmapR, "Histogram - R");
-    //    ae.drawHistogram(sndmapAVG, "Histogram - Mono");
-    //    ae.drawHistogram(sndmapALL, "total");
-    //}
-
-
-    //for(int i = 0; i < 10; i++) {
-    //    cout << residues[lowest].at(i) << " ";
-    //}
-    //cout << endl;
-
-    //vector<string> golomb_encoded = encodeGolomb(residues[lowest]);
     vector<string> fake_golomb_encoded;
 
-    //for(int i = 2; i < 20; i++) {
-    //    golomb_encoded = encodeGolomb(residues[lowest], (int) pow(2, i));
-    //}
     long bestsize = 0;
-
-    //int best_m = findBestM(lowest_values, bs, &bestsize);
-    //long bestsize = 0;
     long totalsize = 0;
     long max_slice;
     int best_m;
     vector<int> partition;
-    /*partition = sliceVector(lowest_values, 0, lowest_values.size()/2);
-    best_m = findBestM(partition, bs, &bestsize);
-    totalsize += bestsize;
-    partition = sliceVector(lowest_values, lowest_values.size()/2, lowest_values.size()-1);
-    best_m = findBestM(partition, bs, &bestsize);
-    totalsize += bestsize;*/
 
-    /*for(int i = 0; i < lowest_values.size()/(bs*4); i++) {
-        max_slice = (i+1)*(lowest_values.size()/(bs*4));
-        if (max_slice >= lowest_values.size())  partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), lowest_values.size() - 1);
-        else partition = sliceVector(lowest_values, i*(lowest_values.size()/(bs*4)), max_slice - 1);
-        cout << "Slice: " << i*(lowest_values.size()/(bs*4)) << " to " << max_slice - 1 << endl;
-        best_m = findBestM(partition, bs, &bestsize);
-        totalsize += bestsize;
-    }*/
+
     long totalsamples = 0;
     long partition_size = (bs*2);
     int number_of_partitions = (int) ceil((lowest_values.size()*1.0)/partition_size);
@@ -322,13 +285,11 @@ int main(int argc, char **argv) {
 
 
 
-    //cout << "Encoded " << lowest_values.size() << " samples. reslow: " << residues[lowest].size() << endl;
-    //fake_golomb_encoded = encodeGolomb(residues[lowest], best_m);
     if(result.count("fake")) {
         FakeAudioCodec codec;
         cout << "(Stage \033[1;34m" << total_stages << "\033[0m/\033[1;31m" << total_stages << "\033[0m) Writing textual file to: " << encoded_filename << endl;
         ofstream outfile(encoded_filename);
-        codec.fakeWriteHeader(outfile, lowest_values.size(), bs, channels, fact);
+        codec.fakeWriteHeader(outfile, lowest_values.size(), bs, channels, fact, lossy_factor);
         codec.fakeEncodeGolombToFile(lowest_values, lowest_value_predictors, m_values, outfile, bs, fact);
         outfile.close();
     }
@@ -336,7 +297,7 @@ int main(int argc, char **argv) {
         RealAudioCodec codec;
         cout << "(Stage \033[1;34m" << total_stages << "\033[0m/\033[1;31m" << total_stages << "\033[0m) Writing encoded file to: " << encoded_filename << endl;
         ofstream outfile(encoded_filename, ios::out | ios::binary);
-        codec.writeHeader(outfile, lowest_values.size(), bs, channels, fact);
+        codec.writeHeader(outfile, lowest_values.size(), bs, channels, fact, lossy_factor);
         codec.encodeGolombToFile(lowest_values, lowest_value_predictors, m_values, outfile, bs, fact);
         outfile.close();
     }
@@ -345,19 +306,6 @@ int main(int argc, char **argv) {
     chrono::milliseconds now = chrono::duration_cast< chrono::milliseconds >(chrono::system_clock::now().time_since_epoch());
     long elapsed = (now-before).count();
     cout << "\033[1;32mDone. Time elapsed: " << elapsed/1000.0 << " seconds.\033[0m" << endl;
-    //for(int i = 0; i < 10; i++) {
-    //    cout << fake_golomb_encoded.at(i) << endl;
-    //}
-
-    //vector<short> decoded = decodeResidue(residues[lowest], lowest+1);
-
-
-    /*cout << "Decoded samples: ";
-    for(int i = 0; i < 10; i++) cout << decoded.at(i) << " ";
-
-    cout << " last: ";
-    cout << decoded.at(decoded.size()-1) << " ";
-    cout << endl;*/
 
     if(draw) cvWaitKey(0);
 

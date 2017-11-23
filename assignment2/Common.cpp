@@ -20,7 +20,7 @@ using namespace std;
 
 
 
-void Common::calculateResidues(vector<short>& input, vector<int> output[]) {
+void Common::calculateResiduals(vector<short> &input, vector<int> *output) {
     int lastValues[4] = {0};
     int actualValues[5] = {0};
     int counter = 10;
@@ -47,7 +47,7 @@ void Common::calculateResidues(vector<short>& input, vector<int> output[]) {
 }
 
 
-void Common::calculateResidues(vector<int>& input, vector<int> output[]) {
+void Common::calculateResiduals(vector<int> &input, vector<int> *output) {
     int lastValues[4] = {0};
     int actualValues[5] = {0};
     vector<int>::iterator it;
@@ -110,7 +110,7 @@ int Common::findBestM(vector<int>& input, int blocksize, long *bestsize) {
 }
 
 
-int Common::blockSumComparison(vector<int> residues[], vector<short>& orig, int blocksize, int blockindex) {
+int Common::blockSumComparison(vector<int> residuals[], vector<short>& orig, int blocksize, int blockindex) {
     long long tmpsum = 0;
     long long lowest_sum;
     int lowest_index;
@@ -124,7 +124,7 @@ int Common::blockSumComparison(vector<int> residues[], vector<short>& orig, int 
     for(int j = 0; j < 3; j++) {
         tmpsum = 0;
         for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
-            tmpsum += abs(residues[j].at(i));
+            tmpsum += abs(residuals[j].at(i));
         }
         if (tmpsum < lowest_sum) {
             lowest_sum = tmpsum;
@@ -138,7 +138,7 @@ int Common::blockSumComparison(vector<int> residues[], vector<short>& orig, int 
 
 
 
-int Common::blockSumComparison(vector<int> residues[], vector<int>& orig, int blocksize, int blockindex) {
+int Common::blockSumComparison(vector<int> residuals[], vector<int>& orig, int blocksize, int blockindex) {
     long long tmpsum = 0;
     long long lowest_sum;
     int lowest_index;
@@ -152,7 +152,7 @@ int Common::blockSumComparison(vector<int> residues[], vector<int>& orig, int bl
     for(int j = 0; j < 3; j++) {
         tmpsum = 0;
         for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
-            tmpsum += abs(residues[j].at(i));
+            tmpsum += abs(residuals[j].at(i));
         }
         if (tmpsum < lowest_sum) {
             lowest_sum = tmpsum;
@@ -166,13 +166,13 @@ int Common::blockSumComparison(vector<int> residues[], vector<int>& orig, int bl
 
 
 
-int Common::blockSumComparison(vector<int> residues[], int blocksize, int blockindex) {
+int Common::blockSumComparison(vector<int> residuals[], int blocksize, int blockindex) {
     long long tmpsum = 0;
     long long lowest_sum;
     int lowest_index;
-    long maxsize = residues[0].size();
+    long maxsize = residuals[0].size();
     for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
-        tmpsum += abs(residues[0].at(i));
+        tmpsum += abs(residuals[0].at(i));
     }
     lowest_sum = tmpsum;
     lowest_index = 0;
@@ -180,7 +180,7 @@ int Common::blockSumComparison(vector<int> residues[], int blocksize, int blocki
     for(int j = 1; j < 4; j++) {
         tmpsum = 0;
         for(int i = blocksize*blockindex; (i < blocksize*(blockindex+1)) && (i < maxsize); i++) {
-            tmpsum += abs(residues[j].at(i));
+            tmpsum += abs(residuals[j].at(i));
         }
         if (tmpsum < lowest_sum) {
             lowest_sum = tmpsum;
@@ -193,14 +193,14 @@ int Common::blockSumComparison(vector<int> residues[], int blocksize, int blocki
 }
 
 
-map<int, int> Common::residueStats(vector<int> residues[], vector<short> orig, int blocksize) {
+map<int, int> Common::residualStats(vector<int> *residuals, vector<short> orig, int blocksize) {
     map<int, int> tmpmap;
     int winner;
     int total_blocks = (int) orig.size()/blocksize;
     cout << "Total blocks: " << total_blocks << endl;
     for(int i = 0; i <= total_blocks; i++) {
 
-        winner = blockSumComparison(residues, orig, blocksize, i);
+        winner = blockSumComparison(residuals, orig, blocksize, i);
         if (tmpmap.count(winner) == 0) tmpmap[winner] = 0;
         tmpmap[winner] = tmpmap[winner] + 1;
         cout << "Block " << i << " done.\n";
@@ -209,14 +209,14 @@ map<int, int> Common::residueStats(vector<int> residues[], vector<short> orig, i
     return tmpmap;
 };
 
-map<int, int> Common::residueStats(vector<int> residues[], int blocksize) {
+map<int, int> Common::residualStats(vector<int> *residuals, int blocksize) {
     map<int, int> tmpmap;
     int winner;
-    int total_blocks = (int) residues[0].size()/blocksize;
+    int total_blocks = (int) residuals[0].size()/blocksize;
     cout << "Total blocks: " << total_blocks << endl;
     for(int i = 0; i <= total_blocks; i++) {
 
-        winner = blockSumComparison(residues, blocksize, i);
+        winner = blockSumComparison(residuals, blocksize, i);
         if (tmpmap.count(winner) == 0) tmpmap[winner] = 0;
         tmpmap[winner] = tmpmap[winner] + 1;
         cout << "Block " << i << " done.\n";
@@ -225,14 +225,14 @@ map<int, int> Common::residueStats(vector<int> residues[], int blocksize) {
     return tmpmap;
 };
 
-map<int, int> Common::residueStats(vector<int> residues[], vector<int> orig, int blocksize) {
+map<int, int> Common::residualStats(vector<int> *residuals, vector<int> orig, int blocksize) {
     map<int, int> tmpmap;
     int winner;
     int total_blocks = (int) orig.size()/blocksize;
     cout << "Total blocks: " << total_blocks << endl;
     for(int i = 0; i <= total_blocks; i++) {
 
-        winner = blockSumComparison(residues, orig, blocksize, i);
+        winner = blockSumComparison(residuals, orig, blocksize, i);
         if (tmpmap.count(winner) == 0) tmpmap[winner] = 0;
         tmpmap[winner] = tmpmap[winner] + 1;
         cout << "Block " << i << " done.\n";
@@ -241,16 +241,16 @@ map<int, int> Common::residueStats(vector<int> residues[], vector<int> orig, int
     return tmpmap;
 };
 
-vector<int> Common::residueComparison(vector<int> residues[], int blocksize, vector<int>& values) {
+vector<int> Common::residualComparison(vector<int> *residuals, int blocksize, vector<int> &values) {
     vector<int> lowest_indexes;
-    long maxsize = residues[0].size();
+    long maxsize = residuals[0].size();
     int winner, res;
-    //cout << "Comparing residues: ";
+    //cout << "Comparing residuals: ";
     for(int i = 0; i <= maxsize/blocksize; i++) {
-        winner = blockSumComparison(residues, blocksize, i);
+        winner = blockSumComparison(residuals, blocksize, i);
         lowest_indexes.push_back(winner);
         for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
-            res = residues[winner].at(j);
+            res = residuals[winner].at(j);
             //if (i == 51) cout << res << " ";
             values.push_back(res);
         }
@@ -260,30 +260,30 @@ vector<int> Common::residueComparison(vector<int> residues[], int blocksize, vec
 };
 
 
-vector<int> Common::residueComparison(vector<int> residues[], vector<short> orig, int blocksize, vector<int>& values) {
+vector<int> Common::residualComparison(vector<int> *residuals, vector<short> orig, int blocksize, vector<int> &values) {
     vector<int> lowest_indexes;
     long maxsize = orig.size();
     int winner;
     for(int i = 0; i <= orig.size()/blocksize; i++) {
-        winner = blockSumComparison(residues, orig, blocksize, i);
+        winner = blockSumComparison(residuals, orig, blocksize, i);
         lowest_indexes.push_back(winner);
         for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
-            values.push_back(winner == 0 ? orig.at(j) : residues[winner - 1].at(j));
+            values.push_back(winner == 0 ? orig.at(j) : residuals[winner - 1].at(j));
         }
     }
     return lowest_indexes;
 };
 
-vector<int> Common::residueComparison(vector<int> residues[], vector<int>& orig, int blocksize, vector<int>& values) {
+vector<int> Common::residualComparison(vector<int> *residuals, vector<int> &orig, int blocksize, vector<int> &values) {
     vector<int> lowest_indexes;
     long maxsize = orig.size();
     int winner;
     for(int i = 0; i <= orig.size()/blocksize; i++) {
         cout << "Processing block " << i << "/" << orig.size()/blocksize << endl;
-        winner = blockSumComparison(residues, orig, blocksize, i);
+        winner = blockSumComparison(residuals, orig, blocksize, i);
         lowest_indexes.push_back(winner);
         for(int j = i*blocksize; (j < ((i+1)*blocksize)) && (j < maxsize); j++) {
-            values.push_back(winner == 0 ? orig.at(j) : residues[winner - 1].at(j));
+            values.push_back(winner == 0 ? orig.at(j) : residuals[winner - 1].at(j));
         }
     }
     return lowest_indexes;

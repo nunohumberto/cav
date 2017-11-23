@@ -10,6 +10,8 @@
 #include <string>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "limits"
+#include <iostream>
 
 using namespace std;
 
@@ -202,7 +204,7 @@ double AudioEntropy::calcEntropy(map<short,int>& sndmap) {
 
     //12.82
     double p;
-    double alpha = 0.0;
+    double alpha = 0.1;
     double entropy = 0;
     for (it = sndmap.begin(); it != sndmap.end(); ++it) {
         p = (sndmap[it->first]+alpha)/(total*1.0+alpha*65536);
@@ -236,6 +238,29 @@ double AudioEntropy::calcEntropy(map<int,int>& sndmap) {
 }
 
 
+double AudioEntropy::calcEntropy(int* arr) {
+    map<int, int>::iterator it;
+
+    long total = 0;
+
+    int size = 2*SHRT_MAX - 2*SHRT_MIN;
+    for (int i = 0; i < size; i++) {
+        total += arr[i];
+    }
+
+    //12.82
+    double p;
+    double alpha = 0.0;
+    double entropy = 0;
+    for (int i = 0; i < size; i++) {
+        p = (arr[i]+alpha)/(total*1.0+alpha*65536);
+        if(p == 0) continue;
+        entropy += p*log2(p);
+    }
+    return -entropy;
+
+}
+
 
 map<short, int> AudioEntropy::mapFromVector(vector<short>& vec) {
     map<short, int> tmpmap;
@@ -262,13 +287,37 @@ map<short, int> AudioEntropy::reducedMapFromIntVector(vector<int>& vec) {
     return tmpmap;
 };
 
+
+
+
 map<int, int> AudioEntropy::mapFromIntVector(vector<int>& vec) {
     map<int, int> tmpmap;
     vector<int>::iterator it;
-
+    int value;
     for(it = vec.begin(); it != vec.end(); it++) {
-        if (tmpmap.count(*it) == 0) tmpmap[*it] = 0;
-        tmpmap[*it] = tmpmap[*it] + 1;
+        value = *it;
+        if (tmpmap.count(value) == 0) tmpmap[value] = 0;
+        tmpmap[value] = tmpmap[value] + 1;
     }
     return tmpmap;
+};
+
+
+void AudioEntropy::arrFromIntVector(vector<int>& vec, int* arr) {
+
+    vector<int>::iterator it;
+    int value;
+    for(it = vec.begin(); it != vec.end(); it++) {
+        value = *it + 65536;
+        //if (tmpmap.count(value) == 0) tmpmap[value] = 0;
+        arr[value] = arr[value] + 1;
+    }
+};
+
+void AudioEntropy::setupQuantizer(int divisions) {
+    delta = (SHRT_MAX-SHRT_MIN)/ ((SHRT_MAX-SHRT_MIN)/(double)divisions);
+}
+
+short AudioEntropy::quantize(short input) {
+    return (short) round(input/delta);
 };

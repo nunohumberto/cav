@@ -199,7 +199,7 @@ vector<int> RealAudioCodec::decodeGolombFromFile(ifstream& input, long total_sam
         //if(blockcounter == 52) cout << predictor << " ";
 
 
-        original = decodeSingleResidue(value, predictor, lastvals, blockcounter == 52);
+        original = decodeSingleResidual(value, predictor, lastvals, blockcounter == 52);
         lastvals[3] = lastvals[2];
         lastvals[2] = lastvals[1];
         lastvals[1] = lastvals[0];
@@ -213,17 +213,18 @@ vector<int> RealAudioCodec::decodeGolombFromFile(ifstream& input, long total_sam
 }
 
 
-void RealAudioCodec::writeHeader(ofstream& outfile, long samples, int bs, int channels, int fact) {
+void RealAudioCodec::writeHeader(ofstream& outfile, long samples, int bs, int channels, int fact, int lf) {
     outfile.write((char*)&samples, sizeof(long));
     outfile.write((char*)&bs, sizeof(int));
     char ch = (char) (channels & 0xFF);
     outfile.write(&ch, sizeof(char));
     ch = (char) (fact & 0xFF);
     outfile.write(&ch, sizeof(char));
+    outfile.write((char*)&lf, sizeof(int));
 }
 
 
-void RealAudioCodec::readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact) {
+void RealAudioCodec::readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact, unsigned int *lf) {
     infile.read((char*)samples, sizeof(long));
     infile.read((char*)bs, sizeof(int));
     char tmp;
@@ -231,6 +232,7 @@ void RealAudioCodec::readHeader(ifstream& infile, long *samples, int *bs, int *c
     *channels = (int) tmp;
     infile.read(&tmp, sizeof(char));
     *fact = (int) tmp;
+    infile.read((char*)lf, sizeof(int));
 }
 
 
@@ -282,7 +284,7 @@ int RealAudioCodec::readNextR(ifstream& infile, int nobits) {
 
 
 
-int RealAudioCodec::decodeSingleResidue(int input, int winner, int last_vals[], bool debug) {
+int RealAudioCodec::decodeSingleResidual(int input, int winner, int *last_vals, bool debug) {
     int nextval;
     int order = winner + 1;
     //cout << "Using order: " << order << endl;
@@ -319,23 +321,45 @@ int RealAudioCodec::decodeToWav(ifstream& input, vector<short>& outLEFT, vector<
     bitsinbuffer = 0;
     long total_samples;
     int bs, channels, fact;
-    readHeader(input, &total_samples, &bs, &channels, &fact);
+    unsigned int lf;
+    readHeader(input, &total_samples, &bs, &channels, &fact, &lf);
     cout << "\nHeader:\nSamples: " << total_samples << "\nBlock size: " << bs << "\nChannels: " << channels << "\nPartition factor: " << fact << endl;
-
+    if(lf != 0) {
+        cout << "Reconstruction levels: " << ((SHRT_MAX - SHRT_MIN) / lf) << endl;
+    }
     cout << "\nDecoding file...\n";
     vector<int> original_input = decodeGolombFromFile(input, total_samples, bs, fact);
-    int value;
-    if(channels == 2) {
-        for (int i = 0; i < original_input.size(); i++) {
-            value = (short) original_input.at(i);
-            if (i < original_input.size() / 2) outLEFT.push_back((short) value);
-            else outDELTA.push_back(value);
 
+
+    int value;
+    if(lf != 0) {
+        double delta = (SHRT_MAX - SHRT_MIN) / ((SHRT_MAX - SHRT_MIN) / lf);
+        if (channels == 2) {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = (int) (original_input.at(i) * delta);
+                if (i < original_input.size() / 2) outLEFT.push_back((short) value);
+                else outDELTA.push_back(value);
+
+            }
+        } else {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = (int) (original_input.at(i) * delta);
+                outLEFT.push_back((short) value);
+            }
         }
     } else {
-        for (int i = 0; i < original_input.size(); i++) {
-            value = (short) original_input.at(i);
-            outLEFT.push_back(value);
+        if (channels == 2) {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = (int) original_input.at(i);
+                if (i < original_input.size() / 2) outLEFT.push_back((short) value);
+                else outDELTA.push_back(value);
+
+            }
+        } else {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = (short) original_input.at(i);
+                outLEFT.push_back(value);
+            }
         }
     }
     return channels;

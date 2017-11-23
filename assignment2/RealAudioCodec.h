@@ -23,12 +23,12 @@ private:
 public:
     vector<int> decodeGolombFromFile(ifstream& input, long total_samples, int bs, int factor);
     void encodeGolombToFile(vector<int>& input, vector<int>& predictors, vector<int>& m_vector, ofstream& outfile, int bs, int factor);
-    int decodeSingleResidue(int input, int winner, int last_vals[], bool debug);
+    int decodeSingleResidual(int input, int winner, int *last_vals, bool debug);
     int decodeToWav(ifstream& input, vector<short>& outLEFT, vector<int>& outDELTA);
     vector<short> lossyRecover(vector<short>& in);
     vector<int> lossyRecover(vector<int>& in);
-    void readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact);
-    void writeHeader(ofstream& outfile, long samples, int bs, int channels, int fact);
+    void readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact, unsigned int *lf);
+    void writeHeader(ofstream& outfile, long samples, int bs, int channels, int fact, int lf);
     void writeWavToFile(string filename, vector<short>& left, vector<int>& delta, int chan);
     void replenish(ifstream& infile);
     char readNextByte(ifstream& infile);

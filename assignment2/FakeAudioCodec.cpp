@@ -74,7 +74,7 @@ vector<int> FakeAudioCodec::fakeDecodeGolombFromFile(ifstream& input, long total
         //if(blockcounter == 52) cout << predictor << " ";
 
 
-        original = decodeSingleResidue(value, predictor, lastvals, blockcounter == 52);
+        original = decodeSingleResidual(value, predictor, lastvals, blockcounter == 52);
         lastvals[3] = lastvals[2];
         lastvals[2] = lastvals[1];
         lastvals[1] = lastvals[0];
@@ -87,7 +87,7 @@ vector<int> FakeAudioCodec::fakeDecodeGolombFromFile(ifstream& input, long total
     return output;
 }
 
-void FakeAudioCodec::fakeWriteHeader(ofstream& outfile, long samples, int bs, int channels, int fact) {
+void FakeAudioCodec::fakeWriteHeader(ofstream& outfile, long samples, int bs, int channels, int fact,int lf) {
     outfile << samples;
     outfile << '\n';
     outfile << bs;
@@ -96,9 +96,12 @@ void FakeAudioCodec::fakeWriteHeader(ofstream& outfile, long samples, int bs, in
     outfile << '\n';
     outfile << fact;
     outfile << '\n';
+    outfile << lf;
+    outfile << '\n';
+
 }
 
-void FakeAudioCodec::fakeReadHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact) {
+void FakeAudioCodec::fakeReadHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact, unsigned int *lf) {
     string buffer;
     getline(infile, buffer);
     *samples = stol(buffer);
@@ -108,6 +111,8 @@ void FakeAudioCodec::fakeReadHeader(ifstream& infile, long *samples, int *bs, in
     *channels = stoi(buffer);
     getline(infile, buffer);
     *fact = stoi(buffer);
+    getline(infile, buffer);
+    *lf = stoi(buffer);
 }
 
 
@@ -164,7 +169,7 @@ void FakeAudioCodec::fakeEncodeGolombToFile(vector<int>& input, vector<int>& pre
 
 
 
-int FakeAudioCodec::decodeSingleResidue(int input, int winner, int last_vals[], bool debug) {
+int FakeAudioCodec::decodeSingleResidual(int input, int winner, int *last_vals, bool debug) {
     int nextval;
     int order = winner + 1;
     //cout << "Using order: " << order << endl;
@@ -193,23 +198,44 @@ int FakeAudioCodec::decodeSingleResidue(int input, int winner, int last_vals[], 
 int FakeAudioCodec::fakeDecodeToWav(ifstream& input, vector<short>& outLEFT, vector<int>& outDELTA) {
     long total_samples;
     int bs, channels, fact;
-    fakeReadHeader(input, &total_samples, &bs, &channels, &fact);
+    unsigned int lf;
+    fakeReadHeader(input, &total_samples, &bs, &channels, &fact, &lf);
     cout << "\nHeader:\nSamples: " << total_samples << "\nBlock size: " << bs << "\nChannels: " << channels << "\nPartition factor: " << fact << endl;
-
+    if(lf != 0) {
+        cout << "Reconstruction levels: " << ((SHRT_MAX - SHRT_MIN) / lf) << endl;
+    }
     cout << "\nDecoding file...\n";
     vector<int> original_input = fakeDecodeGolombFromFile(input, total_samples, bs, fact);
-    int value;
-    if(channels == 2) {
-        for (int i = 0; i < original_input.size(); i++) {
-            value = (short) original_input.at(i);
-            if (i < original_input.size() / 2) outLEFT.push_back((short) value);
-            else outDELTA.push_back(value);
 
+    int value;
+    if(lf != 0) {
+        double delta = (SHRT_MAX-SHRT_MIN)/ ((SHRT_MAX-SHRT_MIN)/lf);
+        if (channels == 2) {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = (int) (original_input.at(i) * delta);
+                if (i < original_input.size() / 2) outLEFT.push_back((short) value);
+                else outDELTA.push_back(value);
+
+            }
+        } else {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = (int) (original_input.at(i) * delta);
+                outLEFT.push_back((short) value);
+            }
         }
     } else {
-        for (int i = 0; i < original_input.size(); i++) {
-            value = (short) original_input.at(i);
-            outLEFT.push_back(value);
+        if (channels == 2) {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = original_input.at(i);
+                if (i < original_input.size() / 2) outLEFT.push_back((short) value);
+                else outDELTA.push_back(value);
+
+            }
+        } else {
+            for (int i = 0; i < original_input.size(); i++) {
+                value = original_input.at(i);
+                outLEFT.push_back((short) value);
+            }
         }
     }
     return channels;
