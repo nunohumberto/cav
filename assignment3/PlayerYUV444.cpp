@@ -21,8 +21,9 @@ static void drawOptFlowMap(const Mat& flow, Mat& cflowmap, int step,
 int main(int argc, char** argv)
 {
 	string line; // store the header
+    int chroma;
 	int yCols, yRows; /* frame dimension */
-	int fps = 15; /* frames per second */
+	int fps = 60; /* frames per second */
 	int i, n, r, g, b, y, u, v; /* auxiliary variables */
 	unsigned char *imgData; // file data buffer
 	uchar *buffer; // unsigned char pointer to the Mat data
@@ -41,10 +42,16 @@ int main(int argc, char** argv)
 	/* Processing header */
 	getline (myfile,line);
   	cout << line << endl;
-	cout << line.substr(line.find(" W") + 2, line.find(" H") - line.find(" W") - 2) << endl;
+	//cout << "'" << line.substr(line.find(" W") + 2, line.find(" H") - line.find(" W") - 2) << "'" << endl;
 	yCols = stoi(line.substr(line.find(" W") + 2, line.find(" H") - line.find(" W") - 2));
 	yRows = stoi(line.substr(line.find(" H") + 2, line.find(" F") - line.find(" H") - 2));
-	cout << yCols << ", " << yRows << endl;
+    try{
+        chroma = stoi(line.substr(line.find(" C") + 2 , line.length()));
+    }
+    catch (std::invalid_argument){
+        chroma = 420;
+    }
+	//cout << yCols << ", " << yRows << endl;
 
 	/* Parse other command line arguments */
 	for(n = 1 ; n < argc ; n++)
@@ -60,7 +67,7 @@ int main(int argc, char** argv)
 			playing = 0;
 		}
 
-		if(!strcmp("-loop", argv[n]))
+		if(!strcmp("-l", argv[n]))
 		{
 			loop = 1;
 		}
@@ -74,7 +81,7 @@ int main(int argc, char** argv)
 
 	/* create a window */
 	cvNamedWindow( "rgb", CV_WINDOW_AUTOSIZE );
-	
+
 
 	// Optical Flow stuff
 	Mat flow, cflow, frame;
@@ -93,47 +100,124 @@ int main(int argc, char** argv)
 				myfile.clear();
 				myfile.seekg(0);
 				getline (myfile,line); // read the header
-				continue; 
+				continue;
 			}
 			else
 			{
-				end = 1; 
+				end = 1;
 				break;
 			}
 		}
 
 		/* The video is stored in YUV planar mode but OpenCv uses packed modes*/
 		buffer = (uchar*)img.ptr();
-		for(i = 0 ; i < yRows * yCols * 3 ; i += 3)
-		{ 
-			/* Accessing to planar info */
-			y = imgData[i / 3]; 
-			u = imgData[(i / 3) + (yRows * yCols)]; 
-			v = imgData[(i / 3) + (yRows * yCols) * 2]; 
+        if(chroma == 444){
+            for(i = 0 ; i < yRows * yCols * 3 ; i += 3)
+            {
+                /* Accessing to planar info */
+                y = imgData[i / 3];
+                u = imgData[(i / 3) + (yRows * yCols)];
+                v = imgData[(i / 3) + (yRows * yCols) * 2];
 
-			/* convert to RGB */
-			b = (int)(1.164*(y - 16) + 2.018*(u-128));
-			g = (int)(1.164*(y - 16) - 0.813*(u-128) - 0.391*(v-128));
-			r = (int)(1.164*(y - 16) + 1.596*(v-128));
+                /* convert to RGB */
+                b = (int)(1.164*(y - 16) + 2.018*(u-128));
+                g = (int)(1.164*(y - 16) - 0.813*(u-128) - 0.391*(v-128));
+                r = (int)(1.164*(y - 16) + 1.596*(v-128));
 
-			/* clipping to [0 ... 255] */
-			if(r < 0) r = 0;
-			if(g < 0) g = 0;
-			if(b < 0) b = 0;
-			if(r > 255) r = 255;
-			if(g > 255) g = 255;
-			if(b > 255) b = 255;
+                /* clipping to [0 ... 255] */
+                if(r < 0) r = 0;
+                if(g < 0) g = 0;
+                if(b < 0) b = 0;
+                if(r > 255) r = 255;
+                if(g > 255) g = 255;
+                if(b > 255) b = 255;
 
-			/* if you need the inverse formulas */
-			//y = r *  .299 + g *  .587 + b *  .114 ;
-			//u = r * -.169 + g * -.332 + b *  .500  + 128.;
-			//v = r *  .500 + g * -.419 + b * -.0813 + 128.;
+                /* if you need the inverse formulas */
+                //y = r *  .299 + g *  .587 + b *  .114 ;
+                //u = r * -.169 + g * -.332 + b *  .500  + 128.;
+                //v = r *  .500 + g * -.419 + b * -.0813 + 128.;
 
-			/* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
-			buffer[i] = b;
-			buffer[i + 1] = g;
-			buffer[i + 2] = r;
-		}
+                /* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
+                buffer[i] = b;
+                buffer[i + 1] = g;
+                buffer[i + 2] = r;
+            }
+        }
+
+        if(chroma == 422){
+            for(i = 0 ; i < yRows * yCols ; i += 1)
+            {
+                /* Accessing to planar info */
+                y = imgData[i];
+                u = imgData[(yRows * yCols) + (i/2)];
+                v = imgData[(yRows * yCols)*3/2 + (i/2)];
+
+                /* convert to RGB*/
+                r = (int)(y + 1.28033*(v-128));
+                g = (int)(y - 0.21482*(u-128) - 0.38059*(v-128));
+                b = (int)(y + 2.12798*(u-128));
+
+                //r = y + 1.28033*v;
+                //g = y - 0.21482*u - 0.38059*v;
+                //b = y + 2.12798*u;
+
+                /* clipping to [0 ... 255] */
+                if(r < 0) r = 0;
+                if(g < 0) g = 0;
+                if(b < 0) b = 0;
+                if(r > 255) r = 255;
+                if(g > 255) g = 255;
+                if(b > 255) b = 255;
+
+                /* if you need the inverse formulas */
+                //y = r *  .299 + g *  .587 + b *  .114 ;
+                //u = r * -.169 + g * -.332 + b *  .500  + 128.;
+                //v = r *  .500 + g * -.419 + b * -.0813 + 128.;
+
+                /* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
+                buffer[i*3] = b;
+                buffer[i*3 + 1] = g;
+                buffer[i*3 + 2] = r;
+            }
+        }
+        if(chroma == 420){
+            for(i = 0 ; i < yRows * yCols ; i += 1)
+            {
+                /* Accessing to planar info */
+                y = imgData[i];
+                int nRow = i/yCols/2;
+                u = imgData[i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)];
+                v = imgData[i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4];
+
+                /* convert to RGB*/
+                r = (int)(y + 1.28033*(v-128));
+                g = (int)(y - 0.21482*(u-128) - 0.38059*(v-128));
+                b = (int)(y + 2.12798*(u-128));
+
+                //r = y + 1.28033*v;
+                //g = y - 0.21482*u - 0.38059*v;
+                //b = y + 2.12798*u;
+
+                /* clipping to [0 ... 255] */
+                if(r < 0) r = 0;
+                if(g < 0) g = 0;
+                if(b < 0) b = 0;
+                if(r > 255) r = 255;
+                if(g > 255) g = 255;
+                if(b > 255) b = 255;
+
+                /* if you need the inverse formulas */
+                //y = r *  .299 + g *  .587 + b *  .114 ;
+                //u = r * -.169 + g * -.332 + b *  .500  + 128.;
+                //v = r *  .500 + g * -.419 + b * -.0813 + 128.;
+
+                /* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
+                buffer[i*3] = b;
+                buffer[i*3 + 1] = g;
+                buffer[i*3 + 2] = r;
+            }
+        }
+
 
 		// Optical Flow stuff
 		cvtColor(img, gray, COLOR_BGR2GRAY);
@@ -149,7 +233,7 @@ int main(int argc, char** argv)
 
 		/* display the image */
 		imshow( "rgb", img );
-		
+
 		if(playing)
 		{
 			/* wait according to the frame rate */
@@ -160,14 +244,14 @@ int main(int argc, char** argv)
 			/* wait until user press a key */
 			inputKey = waitKey(0);
 		}
-	
+
 		/* parse the pressed keys, if any */
 		switch((char)inputKey)
 		{
 			case 'q':
 				end = 1;
 				break;
-			
+
 			case 'p':
 				playing = playing ? 0 : 1;
 				break;
@@ -177,6 +261,6 @@ int main(int argc, char** argv)
 		// Optical Flow stuff
 		std::swap(prevgray, gray);
 	}
-	
+
 	return 0;
 }
