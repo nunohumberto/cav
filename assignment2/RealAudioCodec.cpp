@@ -224,14 +224,14 @@ void RealAudioCodec::writeHeader(ofstream& outfile, long samples, int bs, int ch
 }
 
 
-void RealAudioCodec::readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact, unsigned int *lf) {
+void RealAudioCodec::readHeader(ifstream& infile, long *samples, unsigned int *bs, unsigned int *channels, unsigned int *fact, unsigned int *lf) {
     infile.read((char*)samples, sizeof(long));
     infile.read((char*)bs, sizeof(int));
     char tmp;
     infile.read(&tmp, sizeof(char));
-    *channels = (int) tmp;
+    *channels = (unsigned int) tmp;
     infile.read(&tmp, sizeof(char));
-    *fact = (int) tmp;
+    *fact = (unsigned int) tmp;
     infile.read((char*)lf, sizeof(int));
 }
 
@@ -320,7 +320,7 @@ int RealAudioCodec::decodeToWav(ifstream& input, vector<short>& outLEFT, vector<
     buffer = 0;
     bitsinbuffer = 0;
     long total_samples;
-    int bs, channels, fact;
+    unsigned int bs, channels, fact;
     unsigned int lf;
     readHeader(input, &total_samples, &bs, &channels, &fact, &lf);
     cout << "\nHeader:\nSamples: " << total_samples << "\nBlock size: " << bs << "\nChannels: " << channels << "\nPartition factor: " << fact << endl;

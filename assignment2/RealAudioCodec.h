@@ -27,7 +27,7 @@ public:
     int decodeToWav(ifstream& input, vector<short>& outLEFT, vector<int>& outDELTA);
     vector<short> lossyRecover(vector<short>& in);
     vector<int> lossyRecover(vector<int>& in);
-    void readHeader(ifstream& infile, long *samples, int *bs, int *channels, int *fact, unsigned int *lf);
+    void readHeader(ifstream& infile, long *samples, unsigned int *bs, unsigned int *channels, unsigned int *fact, unsigned int *lf);
     void writeHeader(ofstream& outfile, long samples, int bs, int channels, int fact, int lf);
     void writeWavToFile(string filename, vector<short>& left, vector<int>& delta, int chan);
     void replenish(ifstream& infile);
