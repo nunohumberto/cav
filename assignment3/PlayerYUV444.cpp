@@ -25,10 +25,11 @@ int main(int argc, char** argv)
     int yCols, yRows; /* frame dimension */
     int fps = 60; /* frames per second */
     int i, n, r, g, b, y, u, v; /* auxiliary variables */
-    unsigned char *imgData; // file data buffer
+    int yindex, uindex, vindex; /* indexes */
+    unsigned char *imgData, *predicted, *residues; // file data buffer
     uchar *buffer; // unsigned char pointer to the Mat data
     char inputKey = '?'; /* parse the pressed key */
-    int end = 0, playing = 1, loop = 0; /* control variables */
+    int end = 0, playing = 1, loop = 0, encode = 0; /* control variables */
 
     /* check for the mandatory arguments */
     if( argc < 2 ) {
@@ -71,10 +72,20 @@ int main(int argc, char** argv)
         {
             loop = 1;
         }
+
+        if(!strcmp("-e", argv[n]))
+        {
+            encode = 1;
+        }
     }
 
     /* data structure for the OpenCv image */
     Mat img = Mat(Size(yCols, yRows), CV_8UC3);
+
+    Mat imgyuv;
+    Mat predictorimg = Mat(Size(yCols, yRows*3), CV_8UC1);
+
+    Mat residuesimg = Mat(Size(yCols, yRows*3), CV_8UC1);
 
     /* buffer to store the frame */
     imgData = new unsigned char[yCols * yRows * 3];
@@ -93,6 +104,7 @@ int main(int argc, char** argv)
         /* load a new frame, if possible */
         getline (myfile,line); // Skipping word FRAME
         myfile.read((char *)imgData, yCols * yRows * 3);
+
         if(myfile.gcount() == 0)
         {
             if(loop)
@@ -111,6 +123,7 @@ int main(int argc, char** argv)
 
         /* The video is stored in YUV planar mode but OpenCv uses packed modes*/
         buffer = (uchar*)img.ptr();
+
         switch(chroma){
             case 444:
                 for(i = 0 ; i < yRows * yCols * 3 ; i += 3)
@@ -142,7 +155,90 @@ int main(int argc, char** argv)
                     buffer[i] = b;
                     buffer[i + 1] = g;
                     buffer[i + 2] = r;
+
                 }
+
+                if(encode){
+                    predicted = (uchar*)predictorimg.ptr();
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = i + (yRows * yCols);
+                        vindex = i + (yRows * yCols) * 2;
+
+                        if(i < yCols || !(i%yCols)){
+                            predicted[yindex] = imgData[yindex];
+                            predicted[uindex] = imgData[uindex];
+                            predicted[vindex] = imgData[vindex];
+                        }
+
+                        else{
+                            uchar min, max;
+
+                            //Y
+                            if(imgData[yindex-1] < imgData[yindex-yCols]){ // if a < b
+                                min = imgData[yindex-1];
+                                max = imgData[yindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[yindex-yCols];
+                                max = imgData[yindex-1];
+                            }
+                            if(imgData[yindex-yCols-1] >= max){ // c >= max
+                                predicted[yindex] = min;
+                            }
+                            else if(imgData[yindex-yCols-1] <= min){ //c <= min
+                                predicted[yindex] = max;
+                            }
+                            else{
+                                predicted[yindex] = imgData[yindex-1] + imgData[yindex-yCols] - imgData[yindex-yCols-1]; // x = a + b - c
+                            }
+
+                            //U
+                            if(imgData[uindex-1] < imgData[uindex-yCols]){ // if a < b
+                                min = imgData[uindex-1];
+                                max = imgData[uindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[uindex-yCols];
+                                max = imgData[uindex-1];
+                            }
+                            if(imgData[uindex-yCols-1] >= max){ // c >= max
+                                predicted[uindex] = min;
+                            }
+                            else if(imgData[uindex-yCols-1] <= min){ //c <= min
+                                predicted[uindex] = max;
+                            }
+                            else{
+                                predicted[uindex] = imgData[uindex-1] + imgData[uindex-yCols] - imgData[uindex-yCols-1]; // x = a + b - c
+                            }
+
+                            //V
+                            if(imgData[vindex-1] < imgData[vindex-yCols]){ // if a < b
+                                min = imgData[vindex-1];
+                                max = imgData[vindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[vindex-yCols];
+                                max = imgData[vindex-1];
+                            }
+                            if(imgData[vindex-yCols-1] >= max){ // c >= max
+                                predicted[vindex] = min;
+                            }
+                            else if(imgData[vindex-yCols-1] <= min){ //c <= min
+                                predicted[vindex] = max;
+                            }
+                            else{
+                                predicted[vindex] = imgData[vindex-1] + imgData[vindex-yCols] - imgData[vindex-yCols-1]; // x = a + b - c
+                            }
+
+                        }
+
+                    }
+                }
+
                 break;
             case 422:
                 for(i = 0 ; i < yRows * yCols ; i += 1)
@@ -179,6 +275,88 @@ int main(int argc, char** argv)
                     buffer[i*3 + 1] = g;
                     buffer[i*3 + 2] = r;
                 }
+
+                if(encode){
+                    predicted = (uchar*)predictorimg.ptr();
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = (yRows * yCols) + (i/2);
+                        vindex = (yRows * yCols)*3/2 + (i/2);
+
+                        if(i < yCols || !(i%yCols)){
+                            predicted[yindex] = imgData[yindex];
+                            predicted[uindex] = imgData[uindex];
+                            predicted[vindex] = imgData[vindex];
+                        }
+
+                        else{
+                            uchar min, max;
+
+                            //Y
+                            if(imgData[yindex-1] < imgData[yindex-yCols]){ // if a < b
+                                min = imgData[yindex-1];
+                                max = imgData[yindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[yindex-yCols];
+                                max = imgData[yindex-1];
+                            }
+                            if(imgData[yindex-yCols-1] >= max){ // c >= max
+                                predicted[yindex] = min;
+                            }
+                            else if(imgData[yindex-yCols-1] <= min){ //c <= min
+                                predicted[yindex] = max;
+                            }
+                            else{
+                                predicted[yindex] = imgData[yindex-1] + imgData[yindex-yCols] - imgData[yindex-yCols-1]; // x = a + b - c
+                            }
+
+                            //U
+                            if(imgData[uindex-1] < imgData[uindex-yCols]){ // if a < b
+                                min = imgData[uindex-1];
+                                max = imgData[uindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[uindex-yCols];
+                                max = imgData[uindex-1];
+                            }
+                            if(imgData[uindex-yCols-1] >= max){ // c >= max
+                                predicted[uindex] = min;
+                            }
+                            else if(imgData[uindex-yCols-1] <= min){ //c <= min
+                                predicted[uindex] = max;
+                            }
+                            else{
+                                predicted[uindex] = imgData[uindex-1] + imgData[uindex-yCols] - imgData[uindex-yCols-1]; // x = a + b - c
+                            }
+
+                            //V
+                            if(imgData[vindex-1] < imgData[vindex-yCols]){ // if a < b
+                                min = imgData[vindex-1];
+                                max = imgData[vindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[vindex-yCols];
+                                max = imgData[vindex-1];
+                            }
+                            if(imgData[vindex-yCols-1] >= max){ // c >= max
+                                predicted[vindex] = min;
+                            }
+                            else if(imgData[vindex-yCols-1] <= min){ //c <= min
+                                predicted[vindex] = max;
+                            }
+                            else{
+                                predicted[vindex] = imgData[vindex-1] + imgData[vindex-yCols] - imgData[vindex-yCols-1]; // x = a + b - c
+                            }
+
+                        }
+
+                    }
+                }
+
                 break;
             case 420:
                 for(i = 0 ; i < yRows * yCols ; i += 1)
@@ -216,9 +394,94 @@ int main(int argc, char** argv)
                     buffer[i*3 + 1] = g;
                     buffer[i*3 + 2] = r;
                 }
+
+                if(encode){
+                    predicted = (uchar*)predictorimg.ptr();
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        int nRow = i/yCols/2;
+                        uindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols);
+                        vindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4;
+
+                        if(i < yCols || !(i%yCols)){
+                            predicted[yindex] = imgData[yindex];
+                            predicted[uindex] = imgData[uindex];
+                            predicted[vindex] = imgData[vindex];
+                        }
+
+                        else{
+                            uchar min, max;
+
+                            //Y
+                            if(imgData[yindex-1] < imgData[yindex-yCols]){ // if a < b
+                                min = imgData[yindex-1];
+                                max = imgData[yindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[yindex-yCols];
+                                max = imgData[yindex-1];
+                            }
+                            if(imgData[yindex-yCols-1] >= max){ // c >= max
+                                predicted[yindex] = min;
+                            }
+                            else if(imgData[yindex-yCols-1] <= min){ //c <= min
+                                predicted[yindex] = max;
+                            }
+                            else{
+                                predicted[yindex] = imgData[yindex-1] + imgData[yindex-yCols] - imgData[yindex-yCols-1]; // x = a + b - c
+                            }
+
+                            //U
+                            if(imgData[uindex-1] < imgData[uindex-yCols]){ // if a < b
+                                min = imgData[uindex-1];
+                                max = imgData[uindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[uindex-yCols];
+                                max = imgData[uindex-1];
+                            }
+                            if(imgData[uindex-yCols-1] >= max){ // c >= max
+                                predicted[uindex] = min;
+                            }
+                            else if(imgData[uindex-yCols-1] <= min){ //c <= min
+                                predicted[uindex] = max;
+                            }
+                            else{
+                                predicted[uindex] = imgData[uindex-1] + imgData[uindex-yCols] - imgData[uindex-yCols-1]; // x = a + b - c
+                            }
+
+                            //V
+                            if(imgData[vindex-1] < imgData[vindex-yCols]){ // if a < b
+                                min = imgData[vindex-1];
+                                max = imgData[vindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = imgData[vindex-yCols];
+                                max = imgData[vindex-1];
+                            }
+                            if(imgData[vindex-yCols-1] >= max){ // c >= max
+                                predicted[vindex] = min;
+                            }
+                            else if(imgData[vindex-yCols-1] <= min){ //c <= min
+                                predicted[vindex] = max;
+                            }
+                            else{
+                                predicted[vindex] = imgData[vindex-1] + imgData[vindex-yCols] - imgData[vindex-yCols-1]; // x = a + b - c
+                            }
+
+                        }
+
+                    }
+
+                }
+
                 break;
         }
 
+        residues = imgData - predicted;
 
         // Optical Flow stuff
         cvtColor(img, gray, COLOR_BGR2GRAY);
@@ -234,6 +497,14 @@ int main(int argc, char** argv)
 
         /* display the image */
         imshow( "rgb", img );
+
+        if(encode){
+            /* predictor matrix */
+            imshow( "intra", predictorimg );
+
+            imgyuv = Mat(Size(yCols, yRows*3), CV_8UC1, imgData);
+            imshow( "yuv" , imgyuv);
+        }
 
         if(playing)
         {
