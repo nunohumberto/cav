@@ -1,0 +1,4 @@
+/Users/nunohumberto/newcav/cav/assignment3/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/nunohumberto/newcav/cav/assignment3/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/nunohumberto/newcav/cav/assignment3/cmake-build-debug/CMakeFiles/PlayerYUV444.dir
+/Users/nunohumberto/newcav/cav/assignment3/cmake-build-debug/CMakeFiles/PlayerCamera.dir

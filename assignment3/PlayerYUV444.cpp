@@ -17,6 +17,129 @@ static void drawOptFlowMap(const Mat& flow, Mat& cflowmap, int step,
         }
 }
 
+
+
+unsigned int bitsinbuffer = 0;
+unsigned int buffer = 0;
+
+
+int buildOnes(int n) {
+    unsigned int tmp = ~0;
+    return (tmp >> (32-n));
+}
+
+
+void flush(ofstream& file) {
+    char towrite[1];
+    while (bitsinbuffer >= 8) {
+        towrite[0] = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
+        //towrite[0] = (char) 0xBA;
+        //if(ctr > 0) cout << "Writing: " << hex << (int) towrite[0] << dec << endl;
+        //if(ctr > 0) cout << "Buffer: " << hex << buffer << dec << " (" << bitsinbuffer << ")" << endl;
+        file.write(towrite, 1);
+        bitsinbuffer -= 8;
+        buffer = buffer & buildOnes(bitsinbuffer);
+
+    }
+}
+
+
+
+void forceFlush(ofstream& file) {
+    char towrite[1];
+    while (bitsinbuffer >= 8) {
+        towrite[0] = (char) ((buffer >> (bitsinbuffer - 8)) & 0xFF);
+        file.write(towrite, 1);
+        bitsinbuffer -= 8;
+        buffer = buffer & buildOnes(bitsinbuffer);
+    }
+    if (bitsinbuffer > 0) {
+        towrite[0] = (char) ((buffer << (8 - bitsinbuffer)) & 0xFF);
+        file.write(towrite, 1);
+        buffer = 0;
+        bitsinbuffer = 0;
+    }
+
+}
+
+void writeToFile(int data, int length, char type, ofstream& file) {
+
+    if (type == 'q') {
+        int length_to_go = length;
+        while(length_to_go >= 8) {
+            buffer = (buffer << 8) | 0xFF;
+            bitsinbuffer += 8;
+            flush(file);
+            length_to_go -= 8;
+        }
+        if(length_to_go > 0) {
+            buffer = ((buffer << length_to_go) | ((0x00FF >> (8 - length_to_go)) & 0xFF));
+            bitsinbuffer += length_to_go;
+            flush(file);
+        }
+        buffer = buffer << 1;
+        bitsinbuffer += 1;
+        flush(file);
+    }
+    else if (type == 'r') {
+        buffer = (buffer << length) | (data & buildOnes(length));
+        bitsinbuffer += length;
+        flush(file);
+    }
+    else if (type == 'p') {
+        buffer = (buffer << length) | (data & 0x03);
+        bitsinbuffer += length;
+        flush(file);
+    }
+    else if (type == 'm') {
+        buffer = (buffer << length) | (data & 0xFF);
+        bitsinbuffer += length;
+        flush(file);
+    }
+    else if (type == 'f') {
+        forceFlush(file);
+    }
+}
+
+void encodeGolombToFile(vector<int>& input, ofstream& outfile) {
+    vector<int>::iterator it;
+    int target;
+    int q, r;
+    int m = 2;
+    int nbits = (int) log2(m);
+    //long estsize = 0;
+    //cout << "R values: ";
+    int i = 0;
+    for(it = input.begin(); it != input.end(); it++, i++) {
+
+        if(*it < 0) target = -(1 + *it * 2);
+        else target = 2 * *it;
+
+
+        q = target/m;
+
+        writeToFile(q, q, 'q', outfile);
+        //estsize += (q+1);
+
+        r = target - q * m;
+
+        //if(blockcounter == 52) cout << predictors.at(i/bs) << " ";
+
+        writeToFile(r, nbits, 'r', outfile);
+
+        //estsize += nbits;
+    }
+    //cout << endl;
+
+    writeToFile(0, 0, 'f', outfile);
+    //cout << "Wrote a total of " << partition_index << " partitions.\n";
+    //cout << "Estimated size: " << estsize/8 << endl;
+}
+
+
+
+
+
 int main(int argc, char** argv)
 {
     string line; // store the header
@@ -1045,6 +1168,11 @@ int main(int argc, char** argv)
         // Optical Flow stuff
         std::swap(prevgray, gray);
     }
+
+
+
+
+
 
     return 0;
 }
