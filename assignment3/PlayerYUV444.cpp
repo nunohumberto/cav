@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     int fps = 60; /* frames per second */
     int i, n, r, g, b, y, u, v; /* auxiliary variables */
     int yindex, uindex, vindex; /* indexes */
-    unsigned char *imgData, *predicted, *residues; // file data buffer
+    unsigned char *imgData, *predicted, *residues, *decoded, *decodedrgb; // file data buffer
     uchar *buffer; // unsigned char pointer to the Mat data
     char inputKey = '?'; /* parse the pressed key */
     int end = 0, playing = 1, loop = 0, encode = 0; /* control variables */
@@ -87,6 +87,10 @@ int main(int argc, char** argv)
 
     Mat residuesimg = Mat(Size(yCols, yRows*3), CV_8UC1);
 
+    Mat decodedimg = Mat(Size(yCols, yRows*3), CV_8UC1);
+
+    Mat decodedimgrgb = Mat(Size(yCols, yRows), CV_8UC3);
+
     /* buffer to store the frame */
     imgData = new unsigned char[yCols * yRows * 3];
 
@@ -123,6 +127,9 @@ int main(int argc, char** argv)
 
         /* The video is stored in YUV planar mode but OpenCv uses packed modes*/
         buffer = (uchar*)img.ptr();
+        residues = (uchar*)residuesimg.ptr();
+        decoded = (uchar*)decodedimg.ptr();
+        decodedrgb = (uchar*)decodedimgrgb.ptr();
 
         switch(chroma){
             case 444:
@@ -237,7 +244,148 @@ int main(int argc, char** argv)
                         }
 
                     }
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) { // RESIDUES = ORIGINAL - PREDICTED
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = i + (yRows * yCols);
+                        vindex = i + (yRows * yCols) * 2;
+
+                        if (i < yCols || !(i % yCols)) {
+                            residues[yindex] = imgData[yindex];
+                            residues[uindex] = imgData[uindex];
+                            residues[vindex] = imgData[vindex];
+                        }
+
+                        else{
+                            residues[yindex] = imgData[yindex] - predicted[yindex];
+                            residues[uindex] = imgData[uindex] - predicted[uindex];
+                            residues[vindex] = imgData[vindex] - predicted[vindex];
+                        }
+
+                    }
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) { // DECODING
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = i + (yRows * yCols);
+                        vindex = i + (yRows * yCols) * 2;
+
+                        if (i < yCols || !(i % yCols)) {
+                            decoded[yindex] = residues[yindex];
+                            decoded[uindex] = residues[uindex];
+                            decoded[vindex] = residues[vindex];
+                        }
+
+                        else{
+                            uchar min, max;
+
+                            //Y
+                            if(decoded[yindex-1] < decoded[yindex-yCols]){ // if a < b
+                                min = decoded[yindex-1];
+                                max = decoded[yindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = decoded[yindex-yCols];
+                                max = decoded[yindex-1];
+                            }
+
+                            if(decoded[yindex-yCols-1] >= max){ // c >= max
+                                decoded[yindex] = min;
+                            }
+                            else if(decoded[yindex-yCols-1] <= min){ //c <= min
+                                decoded[yindex] = max;
+                            }
+                            else{
+                                decoded[yindex] = decoded[yindex-1] + decoded[yindex-yCols] - decoded[yindex-yCols-1]; // x = a + b - c
+                            }
+
+                            decoded[yindex] += residues[yindex];
+
+                            //U
+                            if(decoded[uindex-1] < decoded[uindex-yCols]){ // if a < b
+                                min = decoded[uindex-1];
+                                max = decoded[uindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = decoded[uindex-yCols];
+                                max = decoded[uindex-1];
+                            }
+
+                            if(decoded[uindex-yCols-1] >= max){ // c >= max
+                                decoded[uindex] = min;
+                            }
+                            else if(decoded[uindex-yCols-1] <= min){ //c <= min
+                                decoded[uindex] = max;
+                            }
+                            else{
+                                decoded[uindex] = decoded[uindex-1] + decoded[uindex-yCols] - decoded[uindex-yCols-1]; // x = a + b - c
+                            }
+
+                            decoded[uindex] += residues[uindex];
+
+                            //V
+                            if(decoded[vindex-1] < decoded[vindex-yCols]){ // if a < b
+                                min = decoded[vindex-1];
+                                max = decoded[vindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = decoded[vindex-yCols];
+                                max = decoded[vindex-1];
+                            }
+
+                            if(decoded[vindex-yCols-1] >= max){ // c >= max
+                                decoded[vindex] = min;
+                            }
+                            else if(decoded[vindex-yCols-1] <= min){ //c <= min
+                                decoded[vindex] = max;
+                            }
+                            else{
+                                decoded[vindex] = decoded[vindex-1] + decoded[vindex-yCols] - decoded[vindex-yCols-1]; // x = a + b - c
+                            }
+
+                            decoded[vindex] += residues[vindex];
+                        }
+
+                    }
+
+                    for(i = 0 ; i < yRows * yCols * 3 ; i += 3)
+                    {
+                        /* Accessing to planar info */
+                        y = decoded[i / 3];
+                        u = decoded[(i / 3) + (yRows * yCols)];
+                        v = decoded[(i / 3) + (yRows * yCols) * 2];
+
+                        /* convert to RGB */
+                        b = (int)(1.164*(y - 16) + 2.018*(u-128));
+                        g = (int)(1.164*(y - 16) - 0.813*(u-128) - 0.391*(v-128));
+                        r = (int)(1.164*(y - 16) + 1.596*(v-128));
+
+                        /* clipping to [0 ... 255] */
+                        if(r < 0) r = 0;
+                        if(g < 0) g = 0;
+                        if(b < 0) b = 0;
+                        if(r > 255) r = 255;
+                        if(g > 255) g = 255;
+                        if(b > 255) b = 255;
+
+                        /* if you need the inverse formulas */
+                        //y = r *  .299 + g *  .587 + b *  .114 ;
+                        //u = r * -.169 + g * -.332 + b *  .500  + 128.;
+                        //v = r *  .500 + g * -.419 + b * -.0813 + 128.;
+
+                        /* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
+                        decodedrgb[i] = b;
+                        decodedrgb[i + 1] = g;
+                        decodedrgb[i + 2] = r;
+
+                    }
+
                 }
+
+
 
                 break;
             case 422:
@@ -355,7 +503,152 @@ int main(int argc, char** argv)
                         }
 
                     }
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = (yRows * yCols) + (i/2);
+                        vindex = (yRows * yCols)*3/2 + (i/2);
+
+                        if (i < yCols || !(i % yCols)) {
+                            residues[yindex] = imgData[yindex];
+                            residues[uindex] = imgData[uindex];
+                            residues[vindex] = imgData[vindex];
+                        }
+
+                        else{
+                            residues[yindex] = imgData[yindex] - predicted[yindex];
+                            residues[uindex] = imgData[uindex] - predicted[uindex];
+                            residues[vindex] = imgData[vindex] - predicted[vindex];
+                        }
+
+                    }
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) { // DECODING
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = (yRows * yCols) + (i/2);
+                        vindex = (yRows * yCols)*3/2 + (i/2);
+
+                        if (i < yCols || !(i % yCols)) {
+                            decoded[yindex] = residues[yindex];
+                            decoded[uindex] = residues[uindex];
+                            decoded[vindex] = residues[vindex];
+                        }
+
+                        else{
+                            uchar min, max;
+
+                            //Y
+                            if(decoded[yindex-1] < decoded[yindex-yCols]){ // if a < b
+                                min = decoded[yindex-1];
+                                max = decoded[yindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = decoded[yindex-yCols];
+                                max = decoded[yindex-1];
+                            }
+
+                            if(decoded[yindex-yCols-1] >= max){ // c >= max
+                                decoded[yindex] = min;
+                            }
+                            else if(decoded[yindex-yCols-1] <= min){ //c <= min
+                                decoded[yindex] = max;
+                            }
+                            else{
+                                decoded[yindex] = decoded[yindex-1] + decoded[yindex-yCols] - decoded[yindex-yCols-1]; // x = a + b - c
+                            }
+
+                            decoded[yindex] += residues[yindex];
+
+                            //U
+                            if(decoded[uindex-1] < decoded[uindex-yCols]){ // if a < b
+                                min = decoded[uindex-1];
+                                max = decoded[uindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = decoded[uindex-yCols];
+                                max = decoded[uindex-1];
+                            }
+
+                            if(decoded[uindex-yCols-1] >= max){ // c >= max
+                                decoded[uindex] = min;
+                            }
+                            else if(decoded[uindex-yCols-1] <= min){ //c <= min
+                                decoded[uindex] = max;
+                            }
+                            else{
+                                decoded[uindex] = decoded[uindex-1] + decoded[uindex-yCols] - decoded[uindex-yCols-1]; // x = a + b - c
+                            }
+
+                            decoded[uindex] += residues[uindex];
+
+                            //V
+                            if(decoded[vindex-1] < decoded[vindex-yCols]){ // if a < b
+                                min = decoded[vindex-1];
+                                max = decoded[vindex-yCols];
+                            }
+                            else{ // if a > b
+                                min = decoded[vindex-yCols];
+                                max = decoded[vindex-1];
+                            }
+
+                            if(decoded[vindex-yCols-1] >= max){ // c >= max
+                                decoded[vindex] = min;
+                            }
+                            else if(decoded[vindex-yCols-1] <= min){ //c <= min
+                                decoded[vindex] = max;
+                            }
+                            else{
+                                decoded[vindex] = decoded[vindex-1] + decoded[vindex-yCols] - decoded[vindex-yCols-1]; // x = a + b - c
+                            }
+
+                            decoded[vindex] += residues[vindex];
+                        }
+
+
+
+                    }
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+                        /* Accessing to planar info */
+                        yindex = i;
+                        uindex = (yRows * yCols) + (i/2);
+                        vindex = (yRows * yCols)*3/2 + (i/2);
+                        y = decoded[yindex];
+                        u = decoded[uindex];
+                        v = decoded[vindex];
+
+                        /* convert to RGB */
+                        b = (int)(1.164*(y - 16) + 2.018*(u-128));
+                        g = (int)(1.164*(y - 16) - 0.813*(u-128) - 0.391*(v-128));
+                        r = (int)(1.164*(y - 16) + 1.596*(v-128));
+
+                        /* clipping to [0 ... 255] */
+                        if(r < 0) r = 0;
+                        if(g < 0) g = 0;
+                        if(b < 0) b = 0;
+                        if(r > 255) r = 255;
+                        if(g > 255) g = 255;
+                        if(b > 255) b = 255;
+
+                        /* if you need the inverse formulas */
+                        //y = r *  .299 + g *  .587 + b *  .114 ;
+                        //u = r * -.169 + g * -.332 + b *  .500  + 128.;
+                        //v = r *  .500 + g * -.419 + b * -.0813 + 128.;
+
+                        /* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
+                        decodedrgb[i*3] = b;
+                        decodedrgb[i*3 + 1] = g;
+                        decodedrgb[i*3 + 2] = r;
+
+                    }
+
                 }
+
+
 
                 break;
             case 420:
@@ -476,12 +769,153 @@ int main(int argc, char** argv)
 
                     }
 
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+
+                        /* Accessing to planar info */
+                        yindex = i;
+                        int nRow = i/yCols/2;
+                        uindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols);
+                        vindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4;
+
+                        if (i < yCols || !(i % yCols)) {
+                            residues[yindex] = imgData[yindex];
+                            residues[uindex] = imgData[uindex];
+                            residues[vindex] = imgData[vindex];
+                        }
+
+                        else{
+                            residues[yindex] = imgData[yindex] - predicted[yindex];
+                            residues[uindex] = imgData[uindex] - predicted[uindex];
+                            residues[vindex] = imgData[vindex] - predicted[vindex];
+                        }
+
+                    }
+
+                }
+
+                for(i = 0 ; i < yRows * yCols ; i += 1) { // DECODING
+
+                    /* Accessing to planar info */
+                    yindex = i;
+                    int nRow = i/yCols/2;
+                    uindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols);
+                    vindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4;
+
+                    if (i < yCols || !(i % yCols)) {
+                        decoded[yindex] = residues[yindex];
+                        decoded[uindex] = residues[uindex];
+                        decoded[vindex] = residues[vindex];
+                    }
+
+                    else{
+                        uchar min, max;
+
+                        //Y
+                        if(decoded[yindex-1] < decoded[yindex-yCols]){ // if a < b
+                            min = decoded[yindex-1];
+                            max = decoded[yindex-yCols];
+                        }
+                        else{ // if a > b
+                            min = decoded[yindex-yCols];
+                            max = decoded[yindex-1];
+                        }
+
+                        if(decoded[yindex-yCols-1] >= max){ // c >= max
+                            decoded[yindex] = min;
+                        }
+                        else if(decoded[yindex-yCols-1] <= min){ //c <= min
+                            decoded[yindex] = max;
+                        }
+                        else{
+                            decoded[yindex] = decoded[yindex-1] + decoded[yindex-yCols] - decoded[yindex-yCols-1]; // x = a + b - c
+                        }
+
+                        decoded[yindex] += residues[yindex];
+
+                        //U
+                        if(decoded[uindex-1] < decoded[uindex-yCols]){ // if a < b
+                            min = decoded[uindex-1];
+                            max = decoded[uindex-yCols];
+                        }
+                        else{ // if a > b
+                            min = decoded[uindex-yCols];
+                            max = decoded[uindex-1];
+                        }
+
+                        if(decoded[uindex-yCols-1] >= max){ // c >= max
+                            decoded[uindex] = min;
+                        }
+                        else if(decoded[uindex-yCols-1] <= min){ //c <= min
+                            decoded[uindex] = max;
+                        }
+                        else{
+                            decoded[uindex] = decoded[uindex-1] + decoded[uindex-yCols] - decoded[uindex-yCols-1]; // x = a + b - c
+                        }
+
+                        decoded[uindex] += residues[uindex];
+
+                        //V
+                        if(decoded[vindex-1] < decoded[vindex-yCols]){ // if a < b
+                            min = decoded[vindex-1];
+                            max = decoded[vindex-yCols];
+                        }
+                        else{ // if a > b
+                            min = decoded[vindex-yCols];
+                            max = decoded[vindex-1];
+                        }
+
+                        if(decoded[vindex-yCols-1] >= max){ // c >= max
+                            decoded[vindex] = min;
+                        }
+                        else if(decoded[vindex-yCols-1] <= min){ //c <= min
+                            decoded[vindex] = max;
+                        }
+                        else{
+                            decoded[vindex] = decoded[vindex-1] + decoded[vindex-yCols] - decoded[vindex-yCols-1]; // x = a + b - c
+                        }
+
+                        decoded[vindex] += residues[vindex];
+                    }
+
+                    for(i = 0 ; i < yRows * yCols ; i += 1) {
+                        /* Accessing to planar info */
+                        yindex = i;
+                        int nRow = i/yCols/2;
+                        uindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols);
+                        vindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4;
+                        y = decoded[yindex];
+                        u = decoded[uindex];
+                        v = decoded[vindex];
+
+                        /* convert to RGB */
+                        b = (int)(1.164*(y - 16) + 2.018*(u-128));
+                        g = (int)(1.164*(y - 16) - 0.813*(u-128) - 0.391*(v-128));
+                        r = (int)(1.164*(y - 16) + 1.596*(v-128));
+
+                        /* clipping to [0 ... 255] */
+                        if(r < 0) r = 0;
+                        if(g < 0) g = 0;
+                        if(b < 0) b = 0;
+                        if(r > 255) r = 255;
+                        if(g > 255) g = 255;
+                        if(b > 255) b = 255;
+
+                        /* if you need the inverse formulas */
+                        //y = r *  .299 + g *  .587 + b *  .114 ;
+                        //u = r * -.169 + g * -.332 + b *  .500  + 128.;
+                        //v = r *  .500 + g * -.419 + b * -.0813 + 128.;
+
+                        /* Fill the OpenCV buffer - packed mode: BGRBGR...BGR */
+                        decodedrgb[i*3] = b;
+                        decodedrgb[i*3 + 1] = g;
+                        decodedrgb[i*3 + 2] = r;
+
+                    }
+
                 }
 
                 break;
         }
-
-        residues = imgData - predicted;
 
         // Optical Flow stuff
         cvtColor(img, gray, COLOR_BGR2GRAY);
@@ -500,10 +934,14 @@ int main(int argc, char** argv)
 
         if(encode){
             /* predictor matrix */
-            imshow( "intra", predictorimg );
 
-            imgyuv = Mat(Size(yCols, yRows*3), CV_8UC1, imgData);
-            imshow( "yuv" , imgyuv);
+            imshow( "decoded" , decodedimgrgb );
+
+            //imshow( "intra", predictorimg );
+
+            //imgyuv = Mat(Size(yCols, yRows*3), CV_8UC1, imgData);
+
+            //imshow( "yuv" , imgyuv);
         }
 
         if(playing)
