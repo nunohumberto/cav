@@ -431,74 +431,80 @@ int main(int argc, char** argv)
                         /* Accessing to planar info */
                         yindex = i;
                         uindex = (yRows * yCols) + (i/2);
-                        vindex = (yRows * yCols)*3/2 + (i/2);
+                        vindex = (yRows * yCols) * 3/2 + (i/2);
 
-                        if(i < yCols || !(i%yCols)){
-                            predicted[yindex] = imgData[yindex];
-                            predicted[uindex] = imgData[uindex];
-                            predicted[vindex] = imgData[vindex];
+                        uchar min, max;
+                        uchar a,b,c;
+                        //Y
+
+                        a = imgData[yindex-1];
+                        b = imgData[yindex-yCols];
+                        c = imgData[yindex-yCols-1];
+
+                        if(a < b){ // if a < b
+                            min = a;
+                            max = b;
+                        }
+                        else{ // if a > b
+                            min = b;
+                            max = a;
+                        }
+                        if(c >= max){ // c >= max
+                            predicted[yindex] = min;
+                        }
+                        else if(c <= min){ //c <= min
+                            predicted[yindex] = max;
+                        }
+                        else{
+                            predicted[yindex] = a + b - c; // x = a + b - c
                         }
 
+                        //U
+
+                        a = imgData[uindex-1];
+                        b = imgData[uindex-yCols];
+                        c = imgData[uindex-yCols-1];
+
+                        if(a < b){ // if a < b
+                            min = a;
+                            max = b;
+                        }
+                        else{ // if a > b
+                            min = b;
+                            max = a;
+                        }
+                        if(c >= max){ // c >= max
+                            predicted[uindex] = min;
+                        }
+                        else if(c <= min){ //c <= min
+                            predicted[uindex] = max;
+                        }
                         else{
-                            uchar min, max;
+                            predicted[uindex] = a + b - c; // x = a + b - c
+                        }
 
-                            //Y
-                            if(imgData[yindex-1] < imgData[yindex-yCols]){ // if a < b
-                                min = imgData[yindex-1];
-                                max = imgData[yindex-yCols];
-                            }
-                            else{ // if a > b
-                                min = imgData[yindex-yCols];
-                                max = imgData[yindex-1];
-                            }
-                            if(imgData[yindex-yCols-1] >= max){ // c >= max
-                                predicted[yindex] = min;
-                            }
-                            else if(imgData[yindex-yCols-1] <= min){ //c <= min
-                                predicted[yindex] = max;
-                            }
-                            else{
-                                predicted[yindex] = imgData[yindex-1] + imgData[yindex-yCols] - imgData[yindex-yCols-1]; // x = a + b - c
-                            }
+                        //V
 
-                            //U
-                            if(imgData[uindex-1] < imgData[uindex-yCols]){ // if a < b
-                                min = imgData[uindex-1];
-                                max = imgData[uindex-yCols];
-                            }
-                            else{ // if a > b
-                                min = imgData[uindex-yCols];
-                                max = imgData[uindex-1];
-                            }
-                            if(imgData[uindex-yCols-1] >= max){ // c >= max
-                                predicted[uindex] = min;
-                            }
-                            else if(imgData[uindex-yCols-1] <= min){ //c <= min
-                                predicted[uindex] = max;
-                            }
-                            else{
-                                predicted[uindex] = imgData[uindex-1] + imgData[uindex-yCols] - imgData[uindex-yCols-1]; // x = a + b - c
-                            }
+                        a = imgData[vindex-1];
+                        b = imgData[vindex-yCols];
+                        c = imgData[vindex-yCols-1];
 
-                            //V
-                            if(imgData[vindex-1] < imgData[vindex-yCols]){ // if a < b
-                                min = imgData[vindex-1];
-                                max = imgData[vindex-yCols];
-                            }
-                            else{ // if a > b
-                                min = imgData[vindex-yCols];
-                                max = imgData[vindex-1];
-                            }
-                            if(imgData[vindex-yCols-1] >= max){ // c >= max
-                                predicted[vindex] = min;
-                            }
-                            else if(imgData[vindex-yCols-1] <= min){ //c <= min
-                                predicted[vindex] = max;
-                            }
-                            else{
-                                predicted[vindex] = imgData[vindex-1] + imgData[vindex-yCols] - imgData[vindex-yCols-1]; // x = a + b - c
-                            }
-
+                        if(a < b){ // if a < b
+                            min = a;
+                            max = b;
+                        }
+                        else{ // if a > b
+                            min = b;
+                            max = a;
+                        }
+                        if(c >= max){ // c >= max
+                            predicted[vindex] = min;
+                        }
+                        else if(c <= min){ //c <= min
+                            predicted[vindex] = max;
+                        }
+                        else{
+                            predicted[vindex] = a + b - c; // x = a + b - c
                         }
 
                     }
@@ -509,18 +515,30 @@ int main(int argc, char** argv)
                         yindex = i;
                         uindex = (yRows * yCols) + (i/2);
                         vindex = (yRows * yCols)*3/2 + (i/2);
+                        bool yskip, uskip, vskip;
+                        yskip = uskip = vskip = false;
 
-                        if (i < yCols || !(i % yCols)) {
+                        if(yindex < yCols || !(yindex%yCols)){
                             residues[yindex] = imgData[yindex];
+                            yskip = true;
+                        }
+                        if(uindex - yRows*yCols < yCols || !(uindex%yCols)){
                             residues[uindex] = imgData[uindex];
+                            uskip = true;
+                        }
+                        if(vindex  - yRows*yCols * 3/2 < yCols || !(vindex%yCols)){
                             residues[vindex] = imgData[vindex];
+                            vskip = true;
                         }
 
-                        else{
+                        if(!yskip)
                             residues[yindex] = imgData[yindex] - predicted[yindex];
+
+                        if(!uskip)
                             residues[uindex] = imgData[uindex] - predicted[uindex];
+
+                        if(!vskip)
                             residues[vindex] = imgData[vindex] - predicted[vindex];
-                        }
 
                     }
 
@@ -531,83 +549,113 @@ int main(int argc, char** argv)
                         uindex = (yRows * yCols) + (i/2);
                         vindex = (yRows * yCols)*3/2 + (i/2);
 
-                        if (i < yCols || !(i % yCols)) {
+                        bool yskip, uskip, vskip;
+                        yskip = uskip = vskip=false;
+
+                        if(yindex < yCols || !(yindex%yCols)){
                             decoded[yindex] = residues[yindex];
+                            yskip = true;
+                        }
+                        if(uindex - yRows*yCols < yCols || !(uindex%yCols)){ // i/2
                             decoded[uindex] = residues[uindex];
+                            uskip = true;
+                        }
+                        if(vindex  - yRows*yCols * 3/2 < yCols || !(vindex%yCols)){  // i/2
                             decoded[vindex] = residues[vindex];
+                            vskip = true;
                         }
 
-                        else{
-                            uchar min, max;
+                        uchar min, max;
+                        uchar a,b,c;
 
-                            //Y
-                            if(decoded[yindex-1] < decoded[yindex-yCols]){ // if a < b
-                                min = decoded[yindex-1];
-                                max = decoded[yindex-yCols];
+                        //Y
+                        if(!yskip){
+                            a = decoded[yindex-1];
+                            b = decoded[yindex-yCols];
+                            c = decoded[yindex-yCols-1];
+
+                            if(a < b){ // if a < b
+                                min = a;
+                                max = b;
                             }
                             else{ // if a > b
-                                min = decoded[yindex-yCols];
-                                max = decoded[yindex-1];
+                                min = b;
+                                max = a;
                             }
 
-                            if(decoded[yindex-yCols-1] >= max){ // c >= max
+                            if(c >= max){ // c >= max
                                 decoded[yindex] = min;
                             }
-                            else if(decoded[yindex-yCols-1] <= min){ //c <= min
+                            else if(c <= min){ //c <= min
                                 decoded[yindex] = max;
                             }
                             else{
-                                decoded[yindex] = decoded[yindex-1] + decoded[yindex-yCols] - decoded[yindex-yCols-1]; // x = a + b - c
+                                decoded[yindex] = a + b - c; // x = a + b - c
                             }
 
                             decoded[yindex] += residues[yindex];
+                        }
 
-                            //U
-                            if(decoded[uindex-1] < decoded[uindex-yCols]){ // if a < b
-                                min = decoded[uindex-1];
-                                max = decoded[uindex-yCols];
+
+                        //U
+
+                        if(!uskip){
+                            a = decoded[uindex-1];
+                            b = decoded[uindex-yCols];
+                            c = decoded[uindex-yCols-1];
+
+                            if(a < b){ // if a < b
+                                min = a;
+                                max = b;
                             }
                             else{ // if a > b
-                                min = decoded[uindex-yCols];
-                                max = decoded[uindex-1];
+                                min = b;
+                                max = a;
                             }
 
-                            if(decoded[uindex-yCols-1] >= max){ // c >= max
+                            if(c >= max){ // c >= max
                                 decoded[uindex] = min;
                             }
-                            else if(decoded[uindex-yCols-1] <= min){ //c <= min
+                            else if(c <= min){ //c <= min
                                 decoded[uindex] = max;
                             }
                             else{
-                                decoded[uindex] = decoded[uindex-1] + decoded[uindex-yCols] - decoded[uindex-yCols-1]; // x = a + b - c
+                                decoded[uindex] = a + b - c; // x = a + b - c
                             }
 
                             decoded[uindex] += residues[uindex];
 
-                            //V
-                            if(decoded[vindex-1] < decoded[vindex-yCols]){ // if a < b
-                                min = decoded[vindex-1];
-                                max = decoded[vindex-yCols];
+                        }
+
+
+                        //V
+
+                        if(!vskip) {
+                            a = decoded[vindex-1];
+                            b = decoded[vindex-yCols];
+                            c = decoded[vindex-yCols-1];
+
+                            if(a < b){ // if a < b
+                                min = a;
+                                max = b;
                             }
                             else{ // if a > b
-                                min = decoded[vindex-yCols];
-                                max = decoded[vindex-1];
+                                min = b;
+                                max = a;
                             }
 
-                            if(decoded[vindex-yCols-1] >= max){ // c >= max
+                            if(c >= max){ // c >= max
                                 decoded[vindex] = min;
                             }
-                            else if(decoded[vindex-yCols-1] <= min){ //c <= min
+                            else if(c <= min){ //c <= min
                                 decoded[vindex] = max;
                             }
                             else{
-                                decoded[vindex] = decoded[vindex-1] + decoded[vindex-yCols] - decoded[vindex-yCols-1]; // x = a + b - c
+                                decoded[vindex] = a + b - c; // x = a + b - c
                             }
 
                             decoded[vindex] += residues[vindex];
                         }
-
-
 
                     }
 
@@ -646,8 +694,6 @@ int main(int argc, char** argv)
                     }
 
                 }
-
-
 
                 break;
             case 420:
@@ -698,74 +744,64 @@ int main(int argc, char** argv)
                         uindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols);
                         vindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4;
 
-                        if(i < yCols || !(i%yCols)){
-                            predicted[yindex] = imgData[yindex];
-                            predicted[uindex] = imgData[uindex];
-                            predicted[vindex] = imgData[vindex];
-                        }
+                        uchar min, max;
 
+                        //Y
+                        if(imgData[yindex-1] < imgData[yindex-yCols]){ // if a < b
+                            min = imgData[yindex-1];
+                            max = imgData[yindex-yCols];
+                        }
+                        else{ // if a > b
+                            min = imgData[yindex-yCols];
+                            max = imgData[yindex-1];
+                        }
+                        if(imgData[yindex-yCols-1] >= max){ // c >= max
+                            predicted[yindex] = min;
+                        }
+                        else if(imgData[yindex-yCols-1] <= min){ //c <= min
+                            predicted[yindex] = max;
+                        }
                         else{
-                            uchar min, max;
-
-                            //Y
-                            if(imgData[yindex-1] < imgData[yindex-yCols]){ // if a < b
-                                min = imgData[yindex-1];
-                                max = imgData[yindex-yCols];
-                            }
-                            else{ // if a > b
-                                min = imgData[yindex-yCols];
-                                max = imgData[yindex-1];
-                            }
-                            if(imgData[yindex-yCols-1] >= max){ // c >= max
-                                predicted[yindex] = min;
-                            }
-                            else if(imgData[yindex-yCols-1] <= min){ //c <= min
-                                predicted[yindex] = max;
-                            }
-                            else{
-                                predicted[yindex] = imgData[yindex-1] + imgData[yindex-yCols] - imgData[yindex-yCols-1]; // x = a + b - c
-                            }
-
-                            //U
-                            if(imgData[uindex-1] < imgData[uindex-yCols]){ // if a < b
-                                min = imgData[uindex-1];
-                                max = imgData[uindex-yCols];
-                            }
-                            else{ // if a > b
-                                min = imgData[uindex-yCols];
-                                max = imgData[uindex-1];
-                            }
-                            if(imgData[uindex-yCols-1] >= max){ // c >= max
-                                predicted[uindex] = min;
-                            }
-                            else if(imgData[uindex-yCols-1] <= min){ //c <= min
-                                predicted[uindex] = max;
-                            }
-                            else{
-                                predicted[uindex] = imgData[uindex-1] + imgData[uindex-yCols] - imgData[uindex-yCols-1]; // x = a + b - c
-                            }
-
-                            //V
-                            if(imgData[vindex-1] < imgData[vindex-yCols]){ // if a < b
-                                min = imgData[vindex-1];
-                                max = imgData[vindex-yCols];
-                            }
-                            else{ // if a > b
-                                min = imgData[vindex-yCols];
-                                max = imgData[vindex-1];
-                            }
-                            if(imgData[vindex-yCols-1] >= max){ // c >= max
-                                predicted[vindex] = min;
-                            }
-                            else if(imgData[vindex-yCols-1] <= min){ //c <= min
-                                predicted[vindex] = max;
-                            }
-                            else{
-                                predicted[vindex] = imgData[vindex-1] + imgData[vindex-yCols] - imgData[vindex-yCols-1]; // x = a + b - c
-                            }
-
+                            predicted[yindex] = imgData[yindex-1] + imgData[yindex-yCols] - imgData[yindex-yCols-1]; // x = a + b - c
                         }
 
+                        //U
+                        if(imgData[uindex-1] < imgData[uindex-yCols]){ // if a < b
+                            min = imgData[uindex-1];
+                            max = imgData[uindex-yCols];
+                        }
+                        else{ // if a > b
+                            min = imgData[uindex-yCols];
+                            max = imgData[uindex-1];
+                        }
+                        if(imgData[uindex-yCols-1] >= max){ // c >= max
+                            predicted[uindex] = min;
+                        }
+                        else if(imgData[uindex-yCols-1] <= min){ //c <= min
+                            predicted[uindex] = max;
+                        }
+                        else{
+                            predicted[uindex] = imgData[uindex-1] + imgData[uindex-yCols] - imgData[uindex-yCols-1]; // x = a + b - c
+                        }
+
+                        //V
+                        if(imgData[vindex-1] < imgData[vindex-yCols]){ // if a < b
+                            min = imgData[vindex-1];
+                            max = imgData[vindex-yCols];
+                        }
+                        else{ // if a > b
+                            min = imgData[vindex-yCols];
+                            max = imgData[vindex-1];
+                        }
+                        if(imgData[vindex-yCols-1] >= max){ // c >= max
+                            predicted[vindex] = min;
+                        }
+                        else if(imgData[vindex-yCols-1] <= min){ //c <= min
+                            predicted[vindex] = max;
+                        }
+                        else{
+                            predicted[vindex] = imgData[vindex-1] + imgData[vindex-yCols] - imgData[vindex-yCols-1]; // x = a + b - c
+                        }
                     }
 
                     for(i = 0 ; i < yRows * yCols ; i += 1) {
@@ -776,17 +812,31 @@ int main(int argc, char** argv)
                         uindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols);
                         vindex = i/2%yCols + ((nRow-(nRow%2))/2)*yCols + (yRows * yCols)*5/4;
 
-                        if (i < yCols || !(i % yCols)) {
+                        bool yskip, uskip, vskip;
+                        yskip = uskip = vskip = false;
+
+                        if(yindex < yCols || !(yindex%yCols)){
                             residues[yindex] = imgData[yindex];
+                            yskip = true;
+                        }
+                        if(uindex - yRows*yCols < yCols || !(uindex%yCols)){
                             residues[uindex] = imgData[uindex];
+                            uskip = true;
+                        }
+                        if(vindex  - yRows*yCols * 5/4 < yCols || !(vindex%yCols)){
                             residues[vindex] = imgData[vindex];
+                            vskip = true;
                         }
 
-                        else{
+                        if(!yskip)
                             residues[yindex] = imgData[yindex] - predicted[yindex];
+
+                        if(!uskip)
                             residues[uindex] = imgData[uindex] - predicted[uindex];
+
+                        if(!vskip)
                             residues[vindex] = imgData[vindex] - predicted[vindex];
-                        }
+
 
                     }
 
@@ -800,74 +850,100 @@ int main(int argc, char** argv)
                         uindex = i / 2 % yCols + ((nRow - (nRow % 2)) / 2) * yCols + (yRows * yCols);
                         vindex = i / 2 % yCols + ((nRow - (nRow % 2)) / 2) * yCols + (yRows * yCols) * 5 / 4;
 
-                        if (i < yCols || !(i % yCols)) {
-                            decoded[yindex] = residues[yindex];
-                            decoded[uindex] = residues[uindex];
-                            decoded[vindex] = residues[vindex];
-                        } else {
-                            uchar min, max;
+                        bool yskip, uskip, vskip;
+                        yskip = uskip = vskip=false;
 
-                            //Y
-                            if (decoded[yindex - 1] < decoded[yindex - yCols]) { // if a < b
-                                min = decoded[yindex - 1];
-                                max = decoded[yindex - yCols];
+                        if(yindex < yCols || !(yindex%yCols)){
+                            decoded[yindex] = residues[yindex];
+                            yskip = true;
+                        }
+                        if(uindex - yRows*yCols < yCols || !(uindex%yCols)){ // i/2
+                            decoded[uindex] = residues[uindex];
+                            uskip = true;
+                        }
+                        if(vindex  - yRows*yCols * 5/4 < yCols || !(vindex%yCols)){  // i/2
+                            decoded[vindex] = residues[vindex];
+                            vskip = true;
+                        }
+
+                        uchar min, max;
+                        uchar a,b,c;
+
+                        //Y
+                        if(!yskip) {
+                            a = decoded[yindex - 1];
+                            b = decoded[yindex - yCols];
+                            c = decoded[yindex - yCols - 1];
+
+                            if (a < b) { // if a < b
+                                min = a;
+                                max = b;
                             } else { // if a > b
-                                min = decoded[yindex - yCols];
-                                max = decoded[yindex - 1];
+                                min = b;
+                                max = a;
                             }
 
-                            if (decoded[yindex - yCols - 1] >= max) { // c >= max
+                            if (c >= max) { // c >= max
                                 decoded[yindex] = min;
-                            } else if (decoded[yindex - yCols - 1] <= min) { //c <= min
+                            } else if (c <= min) { //c <= min
                                 decoded[yindex] = max;
                             } else {
-                                decoded[yindex] = decoded[yindex - 1] + decoded[yindex - yCols] -
-                                                  decoded[yindex - yCols - 1]; // x = a + b - c
+                                decoded[yindex] = a + b - c; // x = a + b - c
                             }
 
                             decoded[yindex] += residues[yindex];
+                        }
+                        //U
 
-                            //U
-                            if (decoded[uindex - 1] < decoded[uindex - yCols]) { // if a < b
-                                min = decoded[uindex - 1];
-                                max = decoded[uindex - yCols];
+                        if(!uskip) {
+                            a = decoded[uindex - 1];
+                            b = decoded[uindex - yCols];
+                            c = decoded[uindex - yCols - 1];
+
+                            if (a < b) { // if a < b
+                                min = a;
+                                max = b;
                             } else { // if a > b
-                                min = decoded[uindex - yCols];
-                                max = decoded[uindex - 1];
+                                min = b;
+                                max = a;
                             }
 
-                            if (decoded[uindex - yCols - 1] >= max) { // c >= max
+                            if (c >= max) { // c >= max
                                 decoded[uindex] = min;
-                            } else if (decoded[uindex - yCols - 1] <= min) { //c <= min
+                            } else if (c <= min) { //c <= min
                                 decoded[uindex] = max;
                             } else {
-                                decoded[uindex] = decoded[uindex - 1] + decoded[uindex - yCols] -
-                                                  decoded[uindex - yCols - 1]; // x = a + b - c
+                                decoded[uindex] = a + b - c; // x = a + b - c
                             }
 
                             decoded[uindex] += residues[uindex];
+                        }
+                        //V
 
-                            //V
-                            if (decoded[vindex - 1] < decoded[vindex - yCols]) { // if a < b
-                                min = decoded[vindex - 1];
-                                max = decoded[vindex - yCols];
+                        if(!vskip) {
+
+                            a = decoded[vindex - 1];
+                            b = decoded[vindex - yCols];
+                            c = decoded[vindex - yCols - 1];
+
+                            if (a < b) { // if a < b
+                                min = a;
+                                max = b;
                             } else { // if a > b
-                                min = decoded[vindex - yCols];
-                                max = decoded[vindex - 1];
+                                min = b;
+                                max = a;
                             }
 
-                            if (decoded[vindex - yCols - 1] >= max) { // c >= max
+                            if (c >= max) { // c >= max
                                 decoded[vindex] = min;
-                            } else if (decoded[vindex - yCols - 1] <= min) { //c <= min
+                            } else if (c <= min) { //c <= min
                                 decoded[vindex] = max;
                             } else {
-                                decoded[vindex] = decoded[vindex - 1] + decoded[vindex - yCols] -
-                                                  decoded[vindex - yCols - 1]; // x = a + b - c
+                                decoded[vindex] = a + b - c; // x = a + b - c
                             }
 
                             decoded[vindex] += residues[vindex];
                         }
-
                     }
 
                     for (i = 0; i < yRows * yCols; i += 1) {
@@ -927,13 +1003,19 @@ int main(int argc, char** argv)
         if(encode){
             /* predictor matrix */
 
-            imshow( "decoded" , decodedimgrgb );
+            imshow( "decoded" , decodedimg );
+
+            imshow( "decodedrgb" , decodedimgrgb );
 
             //imshow( "intra", predictorimg );
 
-            //imgyuv = Mat(Size(yCols, yRows*3), CV_8UC1, imgData);
+            /*imgyuv = Mat(Size(yCols, yRows*3), CV_8UC1, imgData);
 
-            //imshow( "yuv" , imgyuv);
+            imshow( "yuv" , imgyuv);*/
+
+            //imshow("residues" , residuesimg);
+
+
         }
 
         if(playing)
