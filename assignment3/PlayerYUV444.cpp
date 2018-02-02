@@ -425,7 +425,7 @@ void calculateResidues(int yRows, int yCols, int chroma, unsigned char imgData[]
         bool yskip, uskip, vskip;
         yskip = uskip = vskip = false;
 
-        if(chroma == 444){
+        /*if(chroma == 444){
             if (i < yCols || !(i % yCols)) {
                 residues[yindex] = imgData[yindex];
                 residues[uindex] = imgData[uindex];
@@ -462,7 +462,7 @@ void calculateResidues(int yRows, int yCols, int chroma, unsigned char imgData[]
                 residues[vindex] = imgData[vindex];
                 vskip = true;
             }
-        }
+        }*/
 
         if (!yskip)
             residues[yindex] = imgData[yindex] - predicted[yindex];
@@ -503,6 +503,7 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
         bool yskip, uskip, vskip;
         yskip = uskip = vskip = false;
 
+        /*
         if(chroma == 444){
             if (i < yCols || !(i % yCols)) {
                 decoded[yindex] = residues[yindex];
@@ -538,7 +539,7 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
                 decoded[vindex] = residues[vindex];
                 vskip = true;
             }
-        }
+        }*/
 
         uchar min, max;
         int a,b,c;
