@@ -191,7 +191,8 @@ void loadimage(int yRows, int yCols, int chroma, unsigned char imgData[], uchar 
 void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[], uchar *predicted ){
 
     uchar min, max;
-    uchar a, b, c;
+    uchar a, b, c, d;
+    bool firstline=false, secline=false, firstcol=false, lastcol=false;
     int yindex, uindex, vindex;
     int i;
     for (i = 0; i < yRows * yCols; i += 1) {
@@ -213,12 +214,44 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
             int nRow = i / yCols / 2;
             uindex = i / 2 % yCols + ((nRow - (nRow % 2)) / 2) * yCols + (yRows * yCols);
             vindex = i / 2 % yCols + ((nRow - (nRow % 2)) / 2) * yCols + (yRows * yCols) * 5 / 4;
+
+
         }
 
         //Y
-        a = imgData[yindex - 1];
-        b = imgData[yindex - yCols];
-        c = imgData[yindex - yCols - 1];
+
+        if (yindex < yCols) firstline = true;
+        if (yindex >= yCols && yindex < 2*yCols) secline = true;
+        if (!(yindex % yCols)) firstcol = true;
+        else if (yindex % yCols == yCols - 1) lastcol = true;
+
+        if (firstline) {
+            c = b = d = 0;
+            if (firstcol) a = 0;
+            else a = imgData[yindex - 1];
+        }
+
+        if (firstcol && !firstline) {
+            a = b = imgData[yindex - yCols];
+            if(secline) c = 0;
+            else c = imgData[yindex - 2*yCols];
+            d = imgData[yindex - yCols + 1];
+        }
+
+        if (lastcol && !firstline) {
+            a = imgData[yindex - 1];
+            d = b = imgData[yindex - yCols];
+            c = imgData[yindex - yCols - 1];
+        }
+
+        if(!firstline && !firstcol && !lastcol) {
+            a = imgData[yindex - 1];
+            b = imgData[yindex - yCols];
+            c = imgData[yindex - yCols - 1];
+            d = imgData[yindex - yCols + 1];
+        }
+
+
 
         if (a < b) { // if a < b
             min = a;
@@ -236,10 +269,55 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
             predicted[yindex] = a + b - c;
         }
 
+
+
         //U
-        a = imgData[uindex - 1];
-        b = imgData[uindex - yCols];
-        c = imgData[uindex - yCols - 1];
+
+
+        switch(chroma) {
+            case 444:
+                break;
+            case 422:
+                firstline = (uindex - yRows * yCols) < yCols/2;
+                secline = (uindex - yRows * yCols) >= yCols/2 && (uindex - yRows * yCols) < yCols;
+                firstcol = !(uindex % (yCols/2));
+                lastcol = uindex % (yCols/2) == yCols/2 - 1;
+                break;
+            case 420:
+                firstline = (uindex - yRows * yCols) < yCols/2;
+                secline = (uindex - yRows * yCols) >= yCols/2 && (uindex - yRows * yCols) < yCols;
+                firstcol = !(uindex % (yCols/2));
+                lastcol = uindex % (yCols/2) == yCols/2 - 1;
+                break;
+        }
+
+        if (firstline) {
+            c = b = d = 0;
+            if (firstcol) a = 0;
+            else a = imgData[uindex - 1];
+        }
+
+        if (firstcol && !firstline) {
+            a = b = imgData[uindex - yCols/2];
+            if(secline) c = 0;
+            else c = imgData[uindex - yCols];
+            d = imgData[uindex - yCols/2 + 1];
+        }
+
+        if (lastcol && !firstline) {
+            a = imgData[uindex - 1];
+            d = b = imgData[uindex - yCols/2];
+            c = imgData[uindex - yCols/2 - 1];
+        }
+
+
+        if(!firstline && !firstcol && !lastcol) {
+            a = imgData[uindex - 1];
+            b = imgData[uindex - yCols/2];
+            c = imgData[uindex - yCols/2 - 1];
+            d = imgData[uindex - yCols/2 + 1];
+        }
+
 
         if (a < b) { // if a < b
             min = a;
@@ -257,9 +335,51 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
         }
 
         //V
-        a = imgData[vindex - 1];
-        b = imgData[vindex - yCols];
-        c = imgData[vindex - yCols - 1];
+
+
+
+        switch(chroma) {
+            case 444:
+                break;
+            case 422:
+                firstline = vindex - yRows * yCols * (3/2) < yCols/2;
+                secline = (vindex - yRows * yCols * (3/2)) >= yCols/2 && (vindex - yRows * yCols * (3/2)) < yCols;
+                firstcol = !(vindex % (yCols/2));
+                lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                break;
+            case 420:
+                firstline = vindex - yRows * yCols * (5/4) < yCols/2;
+                secline = (vindex - yRows * yCols * (5/4)) >= yCols/2 && (vindex - yRows * yCols * (5/4)) < yCols;
+                firstcol = !(vindex % (yCols/2));
+                lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                break;
+        }
+
+
+        if (vindex < yCols) firstline = true;
+        if (vindex >= yCols && vindex < 2*yCols) secline = true;
+        if (!(vindex % yCols)) firstcol = true;
+        else if (vindex % yCols == yCols - 1) lastcol = true;
+
+        if (firstline) {
+            c = b = d = 0;
+            if (firstcol) a = 0;
+            else a = imgData[vindex - 1];
+        }
+
+        if (firstcol && !firstline) {
+            a = b = imgData[vindex - yCols];
+            if(secline) c = 0;
+            else c = imgData[vindex - 2*yCols];
+            d = imgData[vindex - yCols + 1];
+        }
+
+        if (lastcol && !firstline) {
+            a = imgData[vindex - 1];
+            d = b = imgData[vindex - yCols];
+            c = imgData[vindex - yCols - 1];
+        }
+
 
         if (a < b) { // if a < b
             min = a;
@@ -703,7 +823,7 @@ int main(int argc, char** argv){
         if (playfile) {
             /* predictor matrix */
 
-            //imshow("decoded", decodedimg);
+            imshow("decoded", decodedimg);
 
             imshow("decodedrgb", decodedimgrgb);
 

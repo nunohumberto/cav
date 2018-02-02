@@ -9,6 +9,10 @@
 /Users/nunohumberto/newcav/cav/assignment3/PlayerYUV444.cpp
 opencv2/opencv.hpp
 -
+iterator
+-
+vector
+-
 
 /usr/local/include/boost/assert.hpp
 boost/config.hpp
