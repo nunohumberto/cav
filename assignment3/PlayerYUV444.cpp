@@ -19,6 +19,12 @@ static void drawOptFlowMap(const Mat& flow, Mat& cflowmap, int step,
         }
 }
 
+
+
+int displaycounter = 0;
+int decodecounter = 0;
+int calcrescounter = 0;
+
 unsigned int bitsinbuffer = 0;
 unsigned int buffer = 0;
 vector<int> res;
@@ -139,7 +145,6 @@ void encodeGolombToFile(vector<int>& input, ofstream& outfile) {
 void loadimage(int yRows, int yCols, int chroma, unsigned char imgData[], uchar *buffer){
 
     int i, r, g, b, y, u, v;
-
     for (i = 0; i < yRows * yCols; i++) {
         /* Accessing to planar info */
 
@@ -160,6 +165,8 @@ void loadimage(int yRows, int yCols, int chroma, unsigned char imgData[], uchar 
             u = imgData[i / 2 % yCols + ((nRow - (nRow % 2)) / 2) * yCols + (yRows * yCols)];
             v = imgData[i / 2 % yCols + ((nRow - (nRow % 2)) / 2) * yCols + (yRows * yCols) * 5 / 4];
         }
+
+
 
         /* convert to RGB */
         b = (int) (1.164 * (y - 16) + 2.018 * (u - 128));
@@ -190,8 +197,8 @@ void loadimage(int yRows, int yCols, int chroma, unsigned char imgData[], uchar 
 
 void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[], uchar *predicted ){
 
-    uchar min, max;
-    uchar a, b, c, d;
+    int min, max;
+    int a, b, c, d;
     bool firstline=false, secline=false, firstcol=false, lastcol=false;
     int yindex, uindex, vindex;
     int i;
@@ -220,18 +227,21 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
 
         //Y
 
-        if (yindex < yCols) firstline = true;
-        if (yindex >= yCols && yindex < 2*yCols) secline = true;
-        if (!(yindex % yCols)) firstcol = true;
-        if (yindex % yCols == yCols - 1) lastcol = true;
+        firstline = yindex < yCols;
+        secline = yindex >= yCols && yindex < 2*yCols;
+        firstcol = yindex % yCols == 0;
+        lastcol = yindex % yCols == yCols - 1;
+
 
         if (firstline) {
             c = b = d = 0;
             if (firstcol) a = 0;
             else a = imgData[yindex - 1];
+            //if(displaycounter < 20) cout << "FL";
         }
 
         if (firstcol && !firstline) {
+            //if(displaycounter < 20) cout << "CRAP";
             a = b = imgData[yindex - yCols];
             if(secline) c = 0;
             else c = imgData[yindex - 2*yCols];
@@ -239,12 +249,14 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
         }
 
         if (lastcol && !firstline) {
+            //if(displaycounter < 20) cout << "DING";
             a = imgData[yindex - 1];
             d = b = imgData[yindex - yCols];
             c = imgData[yindex - yCols - 1];
         }
 
         if(!firstline && !firstcol && !lastcol) {
+            //if(displaycounter < 20) cout << "DONG";
             a = imgData[yindex - 1];
             b = imgData[yindex - yCols];
             c = imgData[yindex - yCols - 1];
@@ -261,10 +273,13 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
             max = a;
         }
 
+
+
         if (c >= max) { // c >= max
             predicted[yindex] = min;
         } else if (c <= min) { //c <= min
             predicted[yindex] = max;
+            //if(displaycounter < 20) cout << "YESYES";
         } else {
             predicted[yindex] = a + b - c;
         }
@@ -339,41 +354,38 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
             case 444:
                 break;
             case 422:
-                firstline = vindex - yRows * yCols * (3/2) < yCols/2;
-                secline = (vindex - yRows * yCols * (3/2)) >= yCols/2 && (vindex - yRows * yCols * (3/2)) < yCols;
+                firstline = (vindex - yRows * yCols * 3/2) < yCols/2;
+                secline = (vindex - yRows * yCols * 3/2) >= yCols/2 && (vindex - yRows * yCols * 3/2) < yCols;
                 firstcol = !(vindex % (yCols/2));
-                lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                lastcol = (vindex % (yCols/2)) == yCols/2 - 1;
                 break;
             case 420:
-                firstline = vindex - yRows * yCols * (5/4) < yCols/2;
-                secline = (vindex - yRows * yCols * (5/4)) >= yCols/2 && (vindex - yRows * yCols * (5/4)) < yCols;
+                firstline = (vindex - yRows * yCols * 5/4) < yCols/2;
+                secline = ((vindex - yRows * yCols * 5/4) >= yCols/2) && ((vindex - yRows * yCols * 5/4) < yCols);
                 firstcol = !(vindex % (yCols/2));
-                lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                lastcol = (vindex % (yCols/2)) == yCols/2 - 1;
                 break;
         }
 
-        if (vindex < yCols) firstline = true;
-        if (vindex >= yCols && vindex < 2*yCols) secline = true;
-        if (!(vindex % yCols)) firstcol = true;
-        if (vindex % yCols == yCols - 1) lastcol = true;
 
         if (firstline) {
             c = b = d = 0;
+            if(displaycounter < 20) cout << "FL";
             if (firstcol) a = 0;
             else a = imgData[vindex - 1];
         }
 
         if (firstcol && !firstline) {
-            a = b = imgData[vindex - yCols];
+            a = b = imgData[vindex - yCols/2];
             if(secline) c = 0;
-            else c = imgData[vindex - 2*yCols];
-            d = imgData[vindex - yCols + 1];
+            else c = imgData[vindex - yCols];
+            d = imgData[vindex - yCols/2 + 1];
         }
 
         if (lastcol && !firstline) {
             a = imgData[vindex - 1];
-            d = b = imgData[vindex - yCols];
-            c = imgData[vindex - yCols - 1];
+            d = b = imgData[vindex - yCols/2];
+            c = imgData[vindex - yCols/2 - 1];
         }
 
 
@@ -397,6 +409,11 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
             predicted[vindex] = max;
         } else {
             predicted[vindex] = a + b - c; // x = a + b - c
+        }
+
+        if(displaycounter < 20) {
+            cerr << "FORFL: " << (vindex - yRows * yCols * 3/2) << " MIN: " << min << " MAX: " << max << " ABC: " << a+b-c << " A:" << (int)a << " VAL: " << (int)predicted[vindex] << endl;
+            displaycounter++;
         }
 
     }
@@ -468,14 +485,20 @@ void calculateResidues(int yRows, int yCols, int chroma, unsigned char imgData[]
         }*/
 
         if (!yskip)
-            residues[yindex] = imgData[yindex] - predicted[yindex];
+            residues[yindex] = (int) imgData[yindex] - (int)predicted[yindex];
+
 
         if (!uskip)
-            residues[uindex] = imgData[uindex] - predicted[uindex];
+            residues[uindex] = (int)imgData[uindex] -  (int)predicted[uindex];
 
-        if (!vskip)
-            residues[vindex] = imgData[vindex] - predicted[vindex];
-
+        if (!vskip) {
+            residues[vindex] = (int) imgData[vindex] - (int) predicted[vindex];
+            if (calcrescounter < 20) {
+                calcrescounter++;
+                cout << "O" << (int) imgData[vindex] << " ";
+                cout << "R" << (int) residues[vindex] << " ";
+            }
+        }
     }
 
 }
@@ -544,7 +567,7 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
             }
         }*/
 
-        uchar min, max;
+        int min, max;
         int a,b,c,d;
         bool firstline=false, secline=false, firstcol=false, lastcol=false;
 
@@ -553,16 +576,19 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
 
             if (yindex < yCols) firstline = true;
             if (yindex >= yCols && yindex < 2*yCols) secline = true;
-            if (!(yindex % yCols)) firstcol = true;
+            if (yindex % yCols == 0) firstcol = true;
             if (yindex % yCols == yCols - 1) lastcol = true;
 
             if (firstline) {
+                //if(decodecounter < 20) cout << "FL";
                 c = b = d = 0;
                 if (firstcol) a = 0;
                 else a = decoded[yindex - 1];
+                //if(decodecounter < 20) cout << a << ")";
             }
 
             if (firstcol && !firstline) {
+                //if(decodecounter < 20) cout << "FDS";
                 a = b = decoded[yindex - yCols];
                 if(secline) c = 0;
                 else c = decoded[yindex - 2*yCols];
@@ -570,12 +596,14 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
             }
 
             if (lastcol && !firstline) {
+                //if(decodecounter < 20) cout << "COCO";
                 a = decoded[yindex - 1];
                 d = b = decoded[yindex - yCols];
                 c = decoded[yindex - yCols - 1];
             }
 
             if(!firstline && !firstcol && !lastcol) {
+                //if(decodecounter < 20) cout << "MERDA";
                 a = decoded[yindex - 1];
                 b = decoded[yindex - yCols];
                 c = decoded[yindex - yCols - 1];
@@ -595,9 +623,13 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
                 decoded[yindex] = min;
             } else if (c <= min) { //c <= min
                 decoded[yindex] = max;
+                //if(decodecounter < 20) cout << "YESYES";
             } else {
                 decoded[yindex] = a + b - c;
             }
+
+
+
 
             decoded[yindex] += residues[yindex];
         }
@@ -611,13 +643,13 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
                 case 422:
                     firstline = (uindex - yRows * yCols) < yCols/2;
                     secline = (uindex - yRows * yCols) >= yCols/2 && (uindex - yRows * yCols) < yCols;
-                    firstcol = uindex % (yCols/2) == 0;
+                    firstcol = (uindex % (yCols/2)) == 0;
                     lastcol = (uindex % (yCols/2)) == (yCols/2 - 1);
                     break;
                 case 420:
                     firstline = (uindex - yRows * yCols) < yCols/2;
                     secline = (uindex - yRows * yCols) >= yCols/2 && (uindex - yRows * yCols) < yCols;
-                    firstcol = uindex % (yCols/2) == 0;
+                    firstcol = (uindex % (yCols/2)) == 0;
                     lastcol = (uindex % (yCols/2)) == (yCols/2 - 1);
                     break;
             }
@@ -666,6 +698,10 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
                 decoded[uindex] = a + b - c; // x = a + b - c
             }
 
+
+
+
+
             decoded[uindex] += residues[uindex];
         }
 
@@ -675,24 +711,18 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
                 case 444:
                     break;
                 case 422:
-                    firstline = vindex - yRows * yCols * (3/2) < yCols/2;
-                    secline = (vindex - yRows * yCols * (3/2)) >= yCols/2 && (vindex - yRows * yCols * (3/2)) < yCols;
+                    firstline = (vindex - yRows * yCols * 3/2) < yCols/2;
+                    secline = (vindex - yRows * yCols * 3/2) >= yCols/2 && (vindex - yRows * yCols * 3/2) < yCols;
                     firstcol = !(vindex % (yCols/2));
-                    lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                    lastcol = (vindex % (yCols/2)) == yCols/2 - 1;
                     break;
                 case 420:
-                    firstline = vindex - yRows * yCols * (5/4) < yCols/2;
-                    secline = (vindex - yRows * yCols * (5/4)) >= yCols/2 && (vindex - yRows * yCols * (5/4)) < yCols;
+                    firstline = (vindex - yRows * yCols * 5/4) < yCols/2;
+                    secline = ((vindex - yRows * yCols * 5/4) >= yCols/2) && ((vindex - yRows * yCols * 5/4) < yCols);
                     firstcol = !(vindex % (yCols/2));
-                    lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                    lastcol = (vindex % (yCols/2)) == yCols/2 - 1;
                     break;
             }
-
-
-            if (vindex < yCols) firstline = true;
-            if (vindex >= yCols && vindex < 2*yCols) secline = true;
-            if (!(vindex % yCols)) firstcol = true;
-            else if (vindex % yCols == yCols - 1) lastcol = true;
 
             if (firstline) {
                 c = b = d = 0;
@@ -701,16 +731,16 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
             }
 
             if (firstcol && !firstline) {
-                a = b = decoded[vindex - yCols];
+                a = b = decoded[vindex - yCols/2];
                 if(secline) c = 0;
-                else c = decoded[vindex - 2*yCols];
-                d = decoded[vindex - yCols + 1];
+                else c = decoded[vindex - yCols];
+                d = decoded[vindex - yCols/2 + 1];
             }
 
             if (lastcol && !firstline) {
                 a = decoded[vindex - 1];
-                d = b = decoded[vindex - yCols];
-                c = decoded[vindex - yCols - 1];
+                d = b = decoded[vindex - yCols/2];
+                c = decoded[vindex - yCols/2 - 1];
             }
 
             if(!firstline && !firstcol && !lastcol) {
@@ -734,6 +764,12 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
                 decoded[vindex] = max;
             } else {
                 decoded[vindex] = a + b - c; // x = a + b - c
+            }
+
+
+            if(decodecounter < 20) {
+                cerr << "MIN: " << min << " MAX: " << max << " ABC: " << a+b-c << " A:" << (int)a  << " RES: " << (int) residues[vindex] << " VAL: " << (int)decoded[vindex] << endl;
+                decodecounter++;
             }
 
             decoded[vindex] += residues[vindex];
@@ -920,7 +956,7 @@ int main(int argc, char** argv){
             predicted = (uchar *) predictorimg.ptr();
             calculatePredicted(yRows,yCols,chroma,imgData,predicted);
             calculateResidues(yRows, yCols, chroma, imgData, residues, predicted);
-
+            cerr << endl;
             //DECODING
             decodeResidues(yRows, yCols, chroma, residues, decoded);
             decodePredicted(yRows, yCols, chroma, decodedrgb, decoded);
