@@ -335,9 +335,6 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
         }
 
         //V
-
-
-
         switch(chroma) {
             case 444:
                 break;
@@ -354,7 +351,6 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
                 lastcol = vindex % (yCols/2) == yCols/2 - 1;
                 break;
         }
-
 
         if (vindex < yCols) firstline = true;
         if (vindex >= yCols && vindex < 2*yCols) secline = true;
@@ -379,7 +375,6 @@ void calculatePredicted(int yRows, int yCols, int chroma, unsigned char imgData[
             d = b = imgData[vindex - yCols];
             c = imgData[vindex - yCols - 1];
         }
-
 
         if (a < b) { // if a < b
             min = a;
@@ -542,13 +537,43 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
         }*/
 
         uchar min, max;
-        int a,b,c;
+        int a,b,c,d;
+        bool firstline=false, secline=false, firstcol=false, lastcol=false;
 
         // Y
         if (!yskip){
-            a = decoded[yindex - 1];
-            b = decoded[yindex - yCols];
-            c = decoded[yindex - yCols - 1];
+
+            if (yindex < yCols) firstline = true;
+            if (yindex >= yCols && yindex < 2*yCols) secline = true;
+            if (!(yindex % yCols)) firstcol = true;
+            else if (yindex % yCols == yCols - 1) lastcol = true;
+
+            if (firstline) {
+                c = b = d = 0;
+                if (firstcol) a = 0;
+                else a = decoded[yindex - 1];
+            }
+
+            if (firstcol && !firstline) {
+                a = b = decoded[yindex - yCols];
+                if(secline) c = 0;
+                else c = decoded[yindex - 2*yCols];
+                d = decoded[yindex - yCols + 1];
+            }
+
+            if (lastcol && !firstline) {
+                a = decoded[yindex - 1];
+                d = b = decoded[yindex - yCols];
+                c = decoded[yindex - yCols - 1];
+            }
+
+            if(!firstline && !firstcol && !lastcol) {
+                a = decoded[yindex - 1];
+                b = decoded[yindex - yCols];
+                c = decoded[yindex - yCols - 1];
+                d = decoded[yindex - yCols + 1];
+            }
+
 
             if (a < b) { // if a < b
                 min = a;
@@ -572,9 +597,50 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
 
         //U
         if(!uskip){
-            a = decoded[uindex - 1];
-            b = decoded[uindex - yCols];
-            c = decoded[uindex - yCols - 1];
+            switch(chroma) {
+                case 444:
+                    break;
+                case 422:
+                    firstline = (uindex - yRows * yCols) < yCols/2;
+                    secline = (uindex - yRows * yCols) >= yCols/2 && (uindex - yRows * yCols) < yCols;
+                    firstcol = !(uindex % (yCols/2));
+                    lastcol = uindex % (yCols/2) == yCols/2 - 1;
+                    break;
+                case 420:
+                    firstline = (uindex - yRows * yCols) < yCols/2;
+                    secline = (uindex - yRows * yCols) >= yCols/2 && (uindex - yRows * yCols) < yCols;
+                    firstcol = !(uindex % (yCols/2));
+                    lastcol = uindex % (yCols/2) == yCols/2 - 1;
+                    break;
+            }
+
+            if (firstline) {
+                c = b = d = 0;
+                if (firstcol) a = 0;
+                else a = decoded[uindex - 1];
+            }
+
+            if (firstcol && !firstline) {
+                a = b = decoded[uindex - yCols/2];
+                if(secline) c = 0;
+                else c = decoded[uindex - yCols];
+                d = decoded[uindex - yCols/2 + 1];
+            }
+
+            if (lastcol && !firstline) {
+                a = decoded[uindex - 1];
+                d = b = decoded[uindex - yCols/2];
+                c = decoded[uindex - yCols/2 - 1];
+            }
+
+
+            if(!firstline && !firstcol && !lastcol) {
+                a = decoded[uindex - 1];
+                b = decoded[uindex - yCols/2];
+                c = decoded[uindex - yCols/2 - 1];
+                d = decoded[uindex - yCols/2 + 1];
+            }
+
 
             if (a < b) { // if a < b
                 min = a;
@@ -597,9 +663,47 @@ void decodeResidues(int yRows, int yCols, int chroma, uchar *residues, uchar *de
 
         //V
         if(!vskip){
-            a = decoded[vindex - 1];
-            b = decoded[vindex - yCols];
-            c = decoded[vindex - yCols - 1];
+            switch(chroma) {
+                case 444:
+                    break;
+                case 422:
+                    firstline = vindex - yRows * yCols * (3/2) < yCols/2;
+                    secline = (vindex - yRows * yCols * (3/2)) >= yCols/2 && (vindex - yRows * yCols * (3/2)) < yCols;
+                    firstcol = !(vindex % (yCols/2));
+                    lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                    break;
+                case 420:
+                    firstline = vindex - yRows * yCols * (5/4) < yCols/2;
+                    secline = (vindex - yRows * yCols * (5/4)) >= yCols/2 && (vindex - yRows * yCols * (5/4)) < yCols;
+                    firstcol = !(vindex % (yCols/2));
+                    lastcol = vindex % (yCols/2) == yCols/2 - 1;
+                    break;
+            }
+
+
+            if (vindex < yCols) firstline = true;
+            if (vindex >= yCols && vindex < 2*yCols) secline = true;
+            if (!(vindex % yCols)) firstcol = true;
+            else if (vindex % yCols == yCols - 1) lastcol = true;
+
+            if (firstline) {
+                c = b = d = 0;
+                if (firstcol) a = 0;
+                else a = decoded[vindex - 1];
+            }
+
+            if (firstcol && !firstline) {
+                a = b = decoded[vindex - yCols];
+                if(secline) c = 0;
+                else c = decoded[vindex - 2*yCols];
+                d = decoded[vindex - yCols + 1];
+            }
+
+            if (lastcol && !firstline) {
+                a = decoded[vindex - 1];
+                d = b = decoded[vindex - yCols];
+                c = decoded[vindex - yCols - 1];
+            }
 
             if (a < b) { // if a < b
                 min = a;
@@ -828,13 +932,13 @@ int main(int argc, char** argv){
 
             imshow("decodedrgb", decodedimgrgb);
 
-            //imshow( "intra", predictorimg );
+            imshow( "intra", predictorimg );
 
             /*imgyuv = Mat(Size(yCols, yRows*3), CV_8UC1, imgData);
 
             imshow( "yuv" , imgyuv);*/
 
-            //imshow("residues" , residuesimg);
+            imshow("residues" , residuesimg);
 
         }
 
